@@ -24,6 +24,7 @@ import java.lang.ref.SoftReference;
 
 import org.apache.commons.lang.mutable.MutableBoolean;
 
+import org.apache.flink.api.java.DataSet;
 import org.apache.sysml.api.DMLScript;
 import org.apache.sysml.api.DMLScript.RUNTIME_PLATFORM;
 import org.apache.sysml.hops.OptimizerUtils;
@@ -128,6 +129,11 @@ public class MatrixObject extends CacheableData
 	private RDDObject _rddHandle = null; //RDD handle
 	private BroadcastObject _bcHandle = null; //Broadcast handle
 	private RDDProperties _rddProperties = null;
+
+	/**
+	 * Flink specific handles
+	 */
+	private DataSet _dataSetHandle = null;
 	
 	/**
 	 * Information relevant to partitioned matrices.
