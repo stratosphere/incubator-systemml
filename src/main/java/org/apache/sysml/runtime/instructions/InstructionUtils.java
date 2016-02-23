@@ -70,6 +70,7 @@ import org.apache.sysml.runtime.functionobjects.ReduceCol;
 import org.apache.sysml.runtime.functionobjects.ReduceDiag;
 import org.apache.sysml.runtime.functionobjects.ReduceRow;
 import org.apache.sysml.runtime.instructions.cp.CPInstruction.CPINSTRUCTION_TYPE;
+import org.apache.sysml.runtime.instructions.flink.FLInstruction.FLINSTRUCTION_TYPE;
 import org.apache.sysml.runtime.instructions.mr.MRInstruction.MRINSTRUCTION_TYPE;
 import org.apache.sysml.runtime.instructions.spark.SPInstruction.SPINSTRUCTION_TYPE;
 import org.apache.sysml.runtime.matrix.operators.AggregateOperator;
@@ -249,6 +250,20 @@ public class InstructionUtils
 		String opcode = getOpCode(str);
 		SPINSTRUCTION_TYPE sptype = SPInstructionParser.String2SPInstructionType.get( opcode ); 
 		return sptype;
+	}
+
+    /**
+     *
+     * @param str
+     * @return
+     * @throws DMLUnsupportedOperationException
+     */
+	public static FLINSTRUCTION_TYPE getFLType( String str )
+		throws DMLUnsupportedOperationException
+	{
+		String opcode = getOpCode(str);
+		FLINSTRUCTION_TYPE fltype = FLInstructionParser.String2FLInstructionType.get( opcode );
+		return fltype;
 	}
 	
 	/**
