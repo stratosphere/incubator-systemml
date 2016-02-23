@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Scanner;
 
+import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.spark.SparkContext;
@@ -597,6 +599,22 @@ public class MLContext {
 		_variables.put(varName, mo);
 		_inVarnames.add(varName);
 		checkIfRegisteringInputAllowed();
+	}
+
+	/**
+	 * Register Flink {{ DataSet<Tuple2<MatrixIndexes, MatrixBlock>> }} together with {{ MatrixCharacteristics }}
+	 * @param varName Name of the registered DataSet variable. Must be same as in DML script!
+	 * @param ds The DataSet that should be registered
+	 * @param mc MatrixCharacteristics containing information about number of columns and rows (in matrix and per block)
+	 * @throws DMLRuntimeException
+     */
+	public void registerInput(String varName, DataSet<Tuple2<MatrixIndexes, MatrixBlock>> ds, MatrixCharacteristics mc) throws DMLRuntimeException {
+		if(_variables == null)
+			_variables = new LocalVariableMap();
+		if(_inVarnames == null)
+			_inVarnames = new ArrayList<String>();
+
+		MatrixObject mo = new MatrixObject(ValueType.DOUBLE, "temp", new MatrixFormatMetaData(mc, OutputInfo.BinaryBlockOutputInfo, InputInfo.BinaryBlockInputInfo));
 	}
 	
 	// =============================================================================================
