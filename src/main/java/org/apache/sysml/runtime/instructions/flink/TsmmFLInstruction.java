@@ -9,6 +9,7 @@ import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
 import org.apache.sysml.runtime.controlprogram.context.ExecutionContext;
+import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetAggregateUtils;
@@ -16,13 +17,13 @@ import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.matrix.operators.Operator;
 
-public class TsmmFLInstruction {
+public class TsmmFLInstruction extends UnaryFLInstruction {
 
     private MMTSJType _type = null;
     private FLInstruction.FLINSTRUCTION_TYPE _fltype = null;
 
-    public TsmmFLInstruction() {
-        //super(op, in1, out, opcode, istr);
+    public TsmmFLInstruction(Operator op, CPOperand in1, CPOperand out, MMTSJType type, String opcode, String istr) {
+        super(op, in1, out, opcode, istr);
         _fltype = FLInstruction.FLINSTRUCTION_TYPE.TSMM;
         _type   = MMTSJType.LEFT;
     }
@@ -40,13 +41,27 @@ public class TsmmFLInstruction {
         CPOperand out = new CPOperand(parts[2]);
         MMTSJType type = MMTSJType.valueOf(parts[3]);
 
-        return new TsmmFLInstruction();
+        return new TsmmFLInstruction(null, in1, out, type, opcode, str);
     }
 
-    //FIXME this is not how instructions should be implemented but only a demonstration!
-    public MatrixBlock processInstruction(DataSet<Tuple2<MatrixIndexes, MatrixBlock>> input) throws DMLRuntimeException, DMLUnsupportedOperationException {
-        DataSet<MatrixBlock> tmp = input.map(new DataSetTSMMFunction(_type));
-        return DataSetAggregateUtils.sumStable(tmp);
+    @Override
+    public void processInstruction(ExecutionContext ec) throws DMLRuntimeException, DMLUnsupportedOperationException {
+    }
+
+    public MatrixBlock processInstructionWReturn(ExecutionContext ec) throws DMLRuntimeException, DMLUnsupportedOperationException {
+        FlinkExecutionContext fec = (FlinkExecutionContext) ec;
+
+        //get input
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in = fec.getBinaryBlockDataSetHandleForVariable(input1.getName());
+        DataSet<MatrixBlock> tmp = in.map(new DataSetTSMMFunction(_type));
+        MatrixBlock out = DataSetAggregateUtils.sumStable(tmp);
+
+        //put output block into symbol table (no lineage because single block)
+        //this also includes implicit maintenance of matrix characteristics
+        //fec.setMatrixOutput(output.getName(), out);
+        // TODO the registered output needs a way to be represented as matrix object --> we need write instructions etc.
+
+        return out;
     }
 
     private static class DataSetTSMMFunction implements MapFunction<Tuple2<MatrixIndexes, MatrixBlock>,MatrixBlock> {
