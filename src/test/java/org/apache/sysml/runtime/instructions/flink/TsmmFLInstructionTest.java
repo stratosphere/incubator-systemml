@@ -3,17 +3,22 @@ package org.apache.sysml.runtime.instructions.flink;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.mesos.Protos;
 import org.apache.sysml.lops.MMTSJ;
 import org.apache.sysml.parser.Expression;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
 import org.apache.sysml.runtime.controlprogram.context.ExecutionContextFactory;
 import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
+import org.apache.sysml.runtime.instructions.cp.VariableCPInstruction;
 import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetConverterUtils;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.MatrixDimensionsMetaData;
+import org.apache.sysml.runtime.matrix.MatrixFormatMetaData;
+import org.apache.sysml.runtime.matrix.data.InputInfo;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
+import org.apache.sysml.runtime.matrix.data.OutputInfo;
 import org.junit.Test;
 
 public class TsmmFLInstructionTest {
@@ -34,26 +39,41 @@ public class TsmmFLInstructionTest {
         MatrixCharacteristics mcOut = new MatrixCharacteristics(0L, 0L, numRowsPerBlock, numColsPerBlock);
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
 
-        // register the data in the flinkExecutionContext
-        DataSetObject m = new DataSetObject(mat, "_mVar1");
-        //DataSetObject out = new DataSetObject(null, "_mVar2"); // temporary result of instruction
-        MatrixObject mo1 = new MatrixObject(Expression.ValueType.DOUBLE, testFile);
-        //MatrixObject mo2 = new MatrixObject(Expression.ValueType.DOUBLE, outFile);
-        MatrixDimensionsMetaData meta1 = new MatrixDimensionsMetaData(mcOut);
-        MatrixDimensionsMetaData meta2 = new MatrixDimensionsMetaData();
-        mo1.setDataSetHandle(m);
-        //mo2.setDataSetHandle(out);
-        mo1.setMetaData(meta1);
-        //mo2.setMetaData(meta2);
-        mo1.setVarName("_mVar1");
-        //mo2.setVarName("_mVar2");
-        flec.setVariable("_mVar1", mo1);
-        //flec.setVariable("_mVar2", mo2);
+        //execute variable isntructions to set up scratch space
+//        VariableCPInstruction readVar1   = VariableCPInstruction.parseInstruction( "CP°createvar°pREADm°/home/fschueler/Repos/incubator-systemml/src/test/resources/flink/haberman.data°false°textcell°306°4°-1°-1°-1");
+//        VariableCPInstruction createVar1 = VariableCPInstruction.parseInstruction( "CP°createvar°_mVar1°scratch_space//_p22279_127.0.1.1//_t0/temp1°true°binaryblock°306°4°1000°1000°-1");
+//        //                                                                         "SPARK°rblk°pREADm·MATRIX·DOUBLE°_mVar1·MATRIX·DOUBLE°1000°1000°true"
+        VariableCPInstruction createvar2 = VariableCPInstruction.parseInstruction( "CP°createvar°_mVar2°scratch_space//_p22279_127.0.1.1//_t0/temp2°true°binaryblock°306°4°1000°1000°-1");
+//        //                                                                         "SPARK°chkpoint°_mVar1·MATRIX·DOUBLE°_mVar2·MATRIX·DOUBLE°MEMORY_AND_DISK"
+//        VariableCPInstruction rmVar1     = VariableCPInstruction.parseInstruction( "CP°rmvar°_mVar1");
+//        VariableCPInstruction createVar3 = VariableCPInstruction.parseInstruction( "CP°createvar°_mVar3°scratch_space//_p22279_127.0.1.1//_t0/temp3°true°binaryblock°4°4°1000°1000°-1");
+        TsmmFLInstruction     inst       = TsmmFLInstruction.parseInstruction(     "FLINK°tsmm°_mVar2·MATRIX·DOUBLE°_mVar3·MATRIX·DOUBLE°LEFT");
+//        VariableCPInstruction rmVar2     = VariableCPInstruction.parseInstruction( "CP°rmvar°_mVar2");
+//        //                                                                         "SPARK°write°_mVar3·MATRIX·DOUBLE°/tmp/sysml·SCALAR·STRING·true°textcell·SCALAR·STRING·true"
+//        VariableCPInstruction rmVar3     = VariableCPInstruction.parseInstruction( "CP°rmvar°_mVar3");
 
-        // parse and execute instructin code
-        String instCode = "FLINK°tsmm°_mVar1·MATRIX·DOUBLE°_mVar2·MATRIX·DOUBLE°LEFT";
-        TsmmFLInstruction inst = TsmmFLInstruction.parseInstruction(instCode);
-        MatrixBlock out = inst.processInstructionWReturn(flec);
+        // execute the instructions
+        MatrixBlock out = null;
+
+//        readVar1.processInstruction(flec);
+//        createVar1.processInstruction(flec);
+//        createvar2.processInstruction(flec);
+//        rmVar1.processInstruction(flec);
+//        createVar3.processInstruction(flec);
+        // mock the missing parts and instructions here
+        String                  inputName = createvar2.getInput1().getName();
+        DataSetObject           m         = new DataSetObject(mat, inputName);
+        MatrixObject            mo1       = new MatrixObject(Expression.ValueType.DOUBLE, testFile);
+        MatrixFormatMetaData    mfmd      = new MatrixFormatMetaData(mcOut, OutputInfo.BinaryBlockOutputInfo, InputInfo.BinaryBlockInputInfo);
+        mo1.setDataSetHandle(m);
+        mo1.setMetaData(mfmd);
+        mo1.setVarName(inputName);
+        //flec.removeVariable(inputName);
+        flec.setVariable(inputName, mo1);
+        // end mock
+        out = inst.processInstructionWReturn(flec);
+//        rmVar2.processInstruction(flec);
+//        rmVar3.processInstruction(flec);
 
         System.out.println(out);
     }
