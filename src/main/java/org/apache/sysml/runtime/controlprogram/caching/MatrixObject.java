@@ -35,6 +35,7 @@ import org.apache.sysml.parser.Expression.ValueType;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.ParForProgramBlock.PDataPartitionFormat;
 import org.apache.sysml.runtime.controlprogram.context.SparkExecutionContext;
+import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
 import org.apache.sysml.runtime.instructions.spark.data.BroadcastObject;
 import org.apache.sysml.runtime.instructions.spark.data.RDDObject;
 import org.apache.sysml.runtime.instructions.spark.data.RDDProperties;
@@ -133,7 +134,7 @@ public class MatrixObject extends CacheableData
 	/**
 	 * Flink specific handles
 	 */
-	private DataSet _dataSetHandle = null;
+	private DataSetObject _dataSetHandle = null;
 	
 	/**
 	 * Information relevant to partitioned matrices.
@@ -448,9 +449,27 @@ public class MatrixObject extends CacheableData
 		if( _bcHandle != null )
 			bc.setBackReference(this);
 	}
-	
-	
-	// *********************************************
+
+    /**
+     * Flink specifics
+     */
+
+    public DataSetObject getDataSetHandle() {
+        return _dataSetHandle;
+    }
+
+    public void setDataSetHandle(DataSetObject ds) {
+
+        if(_dataSetHandle != null)
+            _dataSetHandle.setBackReference(null);
+
+        _dataSetHandle = ds;
+        if(_dataSetHandle != null)
+            ds.setBackReference(this);
+    }
+
+
+    // *********************************************
 	// ***                                       ***
 	// ***    HIGH-LEVEL METHODS THAT SPECIFY    ***
 	// ***   THE LOCKING AND CACHING INTERFACE   ***
