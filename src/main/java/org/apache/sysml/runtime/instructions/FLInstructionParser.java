@@ -4,6 +4,7 @@ import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
 import org.apache.sysml.runtime.instructions.flink.FLInstruction;
 import org.apache.sysml.runtime.instructions.flink.FLInstruction.FLINSTRUCTION_TYPE;
+import org.apache.sysml.runtime.instructions.flink.ReblockFLInstruction;
 import org.apache.sysml.runtime.instructions.flink.TsmmFLInstruction;
 
 import java.util.HashMap;
@@ -17,6 +18,9 @@ public class FLInstructionParser extends InstructionParser {
 
         //binary aggregate operators (matrix multiplication operators)
         String2FLInstructionType.put( "tsmm" , FLINSTRUCTION_TYPE.TSMM);
+
+        // REBLOCK Instruction Opcodes
+        String2FLInstructionType.put( "rblk" , FLINSTRUCTION_TYPE.Reblock);
     }
 
     public static FLInstruction parseSingleInstruction(String str)
@@ -43,7 +47,9 @@ public class FLInstructionParser extends InstructionParser {
         String[] parts = null;
         switch (fltype) {
             case TSMM:
-                //return TsmmFLInstruction.parseInstruction(str);
+                return TsmmFLInstruction.parseInstruction(str);
+            case Reblock:
+                return ReblockFLInstruction.parseInstruction(str);
             default:
                 throw new DMLUnsupportedOperationException("Invalid FL Instruction Type: " + fltype);
         }

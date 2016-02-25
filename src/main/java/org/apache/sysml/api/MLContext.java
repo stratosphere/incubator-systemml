@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 import java.util.Scanner;
 
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -62,10 +63,12 @@ import org.apache.sysml.runtime.controlprogram.caching.CacheableData;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
 import org.apache.sysml.runtime.controlprogram.context.ExecutionContext;
 import org.apache.sysml.runtime.controlprogram.context.ExecutionContextFactory;
+import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.controlprogram.context.SparkExecutionContext;
 import org.apache.sysml.runtime.instructions.Instruction;
 import org.apache.sysml.runtime.instructions.cp.Data;
 import org.apache.sysml.runtime.instructions.cp.VariableCPInstruction;
+import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
 import org.apache.sysml.runtime.instructions.spark.data.RDDObject;
 import org.apache.sysml.runtime.instructions.spark.data.RDDProperties;
 import org.apache.sysml.runtime.instructions.spark.functions.ConvertStringToLongTextPair;
@@ -226,6 +229,10 @@ public class MLContext {
 	 */
 	public MLContext(JavaSparkContext sc) throws DMLRuntimeException {
 		initializeSpark(sc.sc(), false, false);
+	}
+
+	public MLContext(ExecutionEnvironment env) throws DMLRuntimeException {
+		initializeFlink(env);
 	}
 	
 	/**
@@ -611,6 +618,9 @@ public class MLContext {
 			_inVarnames = new ArrayList<String>();
 
 		MatrixObject mo = new MatrixObject(ValueType.DOUBLE, "temp", new MatrixFormatMetaData(mc, OutputInfo.BinaryBlockOutputInfo, InputInfo.BinaryBlockInputInfo));
+		mo.setDataSetHandle(new DataSetObject(ds, varName));
+		_variables.put(varName, mo);
+		_inVarnames.add(varName);
 	}
 	
 	// =============================================================================================
@@ -623,7 +633,7 @@ public class MLContext {
 	 * @throws DMLRuntimeException
 	 */
 	public void registerOutput(String varName) throws DMLRuntimeException {
-		if(!(DMLScript.rtplatform == RUNTIME_PLATFORM.SPARK || DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_SPARK)) {
+		if(!(DMLScript.rtplatform == RUNTIME_PLATFORM.SPARK || DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_SPARK || DMLScript.rtplatform == RUNTIME_PLATFORM.FLINK)) {
 			throw new DMLRuntimeException("The registerOutput functionality only supported for spark runtime. Please use MLContext(sc) instead of default constructor.");
 		}
 		if(_outVarnames == null)
@@ -1131,6 +1141,11 @@ public class MLContext {
 		
 		return 0;
 	}
+
+	private void initializeFlink(ExecutionEnvironment env) {
+		MLContextProxy.setActive(true);
+		DMLScript.rtplatform = RUNTIME_PLATFORM.FLINK;
+	}
 	
 	private void initializeSpark(SparkContext sc, boolean monitorPerformance, boolean setForcedSparkExecType) throws DMLRuntimeException {
 		MLContextProxy.setActive(true);
@@ -1264,6 +1279,51 @@ public class MLContext {
 				}
 				
 				return new MLOutput(retVal, outMetadata);
+			} else if (DMLScript.rtplatform == RUNTIME_PLATFORM.FLINK) {
+				HashMap<String, DataSet<Tuple2<MatrixIndexes,MatrixBlock>>> retVal = null;
+
+				// Depending on whether registerInput/registerOutput was called initialize the variables
+				String[] inputs = null; String[] outputs = null;
+				if(_inVarnames != null) {
+					inputs = _inVarnames.toArray(new String[0]);
+				}
+				else {
+					inputs = new String[0];
+				}
+				if(_outVarnames != null) {
+					outputs = _outVarnames.toArray(new String[0]);
+				}
+				else {
+					outputs = new String[0];
+				}
+				HashMap<String, MatrixCharacteristics> outMetadata = new HashMap<String, MatrixCharacteristics>();
+
+				HashMap<String, String> argVals = DMLScript.createArgumentsMap(isNamedArgument, args);
+
+				// Run the DML script
+				ExecutionContext ec = executeUsingSimplifiedCompilationChain(dmlScriptFilePath, isFile, argVals, isPyDML, inputs, outputs, _variables, configFilePath);
+
+				// Now collect the output
+				if(_outVarnames != null) {
+					if(_variables == null) {
+						throw new DMLRuntimeException("The symbol table returned after executing the script is empty");
+					}
+
+					for( String ovar : _outVarnames ) {
+						if( _variables.keySet().contains(ovar) ) {
+							if(retVal == null) {
+								retVal = new HashMap<String, DataSet<Tuple2<MatrixIndexes,MatrixBlock>>>();
+							}
+							retVal.put(ovar, ((FlinkExecutionContext) ec).getBinaryBlockDataSetHandleForVariable(ovar));
+							outMetadata.put(ovar, ((FlinkExecutionContext) ec).getMatrixCharacteristics(ovar)); // For converting output to dataframe
+						}
+						else {
+							throw new DMLException("Error: The variable " + ovar + " is not available as output after the execution of the DMLScript.");
+						}
+					}
+				}
+
+				return new FlinkMLOutput(retVal, outMetadata);
 			}
 			else {
 				throw new DMLRuntimeException("Unsupported runtime:" + DMLScript.rtplatform.name());
