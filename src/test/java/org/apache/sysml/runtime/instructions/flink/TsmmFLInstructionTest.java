@@ -16,6 +16,7 @@ import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.instructions.cp.VariableCPInstruction;
 import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetConverterUtils;
+import org.apache.sysml.runtime.instructions.mr.ReblockInstruction;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.MatrixDimensionsMetaData;
 import org.apache.sysml.runtime.matrix.MatrixFormatMetaData;
@@ -43,7 +44,7 @@ public class TsmmFLInstructionTest {
 
         // transform data into dataset with systemml binary format
         MatrixCharacteristics mcOut = new MatrixCharacteristics(0L, 0L, numRowsPerBlock, numColsPerBlock);
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvStringToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
 
         //execute variable isntructions to set up scratch space
 //        VariableCPInstruction readVar1   = VariableCPInstruction.parseInstruction( "CP°createvar°pREADm°/home/fschueler/Repos/incubator-systemml/src/test/resources/flink/haberman.data°false°textcell°306°4°-1°-1°-1");
@@ -85,7 +86,48 @@ public class TsmmFLInstructionTest {
     }
 
     @Test
-    public void testTSMMWithMLConext() throws Exception{
+    public void testTSMMWithInstructions() throws Exception {
+        // input data and blocking parameters
+        String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
+        int numRowsPerBlock = 10;
+        int numColsPerBlock = 10;
+
+        // get execution context
+        FlinkExecutionContext flec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
+
+        //execute variable isntructions to set up scratch space
+        VariableCPInstruction readVar1   = VariableCPInstruction.parseInstruction(   "CP°createvar°pREADm°" + testFile + "°false°csv°306°4°-1°-1°-1°false°,°true°0.0");
+        VariableCPInstruction createVar1 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar1°scratch_space//_p22279_127.0.1.1//_t0/temp1°true°binaryblock°306°4°1000°1000°-1");
+        ReblockFLInstruction  reblock    = ReblockFLInstruction.parseInstruction(    "FLINK°rblk°pREADm·MATRIX·DOUBLE°_mVar1·MATRIX·DOUBLE°1000°1000°true");
+        VariableCPInstruction createvar2 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar2°scratch_space//_p22279_127.0.1.1//_t0/temp2°true°binaryblock°306°4°1000°1000°-1");
+        CheckpointFLInstruction chkpnt   = CheckpointFLInstruction.parseInstruction( "FLINK°chkpoint°_mVar1·MATRIX·DOUBLE°_mVar2·MATRIX·DOUBLE°MEMORY_AND_DISK");
+        VariableCPInstruction rmVar1     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar1");
+        VariableCPInstruction createVar3 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar3°scratch_space//_p22279_127.0.1.1//_t0/temp3°true°binaryblock°4°4°1000°1000°-1");
+        TsmmFLInstruction     inst       = TsmmFLInstruction.parseInstruction(       "FLINK°tsmm°_mVar2·MATRIX·DOUBLE°_mVar3·MATRIX·DOUBLE°LEFT");
+        VariableCPInstruction rmVar2     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar2");
+        //                                                                           "SPARK°write°_mVar3·MATRIX·DOUBLE°/tmp/sysml·SCALAR·STRING·true°textcell·SCALAR·STRING·true"
+        VariableCPInstruction rmVar3     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar3");
+
+        // execute the instructions
+        MatrixBlock out;
+
+        readVar1.processInstruction(flec);
+        createVar1.processInstruction(flec);
+        reblock.processInstruction(flec);
+        createvar2.processInstruction(flec);
+        chkpnt.processInstruction(flec);
+        rmVar1.processInstruction(flec);
+        createVar3.processInstruction(flec);
+        out = inst.processInstructionWReturn(flec);
+        rmVar2.processInstruction(flec);
+//      writeVar3.processInstruction(flec);
+//      rmVar3.processInstruction(flec);
+
+        System.out.println(out);
+    }
+
+    @Test
+    public void testTSMMWithMLConext() throws Exception {
         // input data and blocking parameters
         String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
         int numRowsPerBlock = 10;
@@ -101,7 +143,7 @@ public class TsmmFLInstructionTest {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
         DataSet<String> input = env.readTextFile(testFile);
         MatrixCharacteristics mcOut = new MatrixCharacteristics(0L, 0L, numRowsPerBlock, numColsPerBlock);
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvStringToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
 
         // create MLContext
         MLContext mlContext = new MLContext(env);

@@ -2,6 +2,7 @@ package org.apache.sysml.runtime.instructions;
 
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
+import org.apache.sysml.runtime.instructions.flink.CheckpointFLInstruction;
 import org.apache.sysml.runtime.instructions.flink.FLInstruction;
 import org.apache.sysml.runtime.instructions.flink.FLInstruction.FLINSTRUCTION_TYPE;
 import org.apache.sysml.runtime.instructions.flink.ReblockFLInstruction;
@@ -46,6 +47,8 @@ public class FLInstructionParser extends InstructionParser {
 
         String[] parts = null;
         switch (fltype) {
+            case Reorg:
+                return CheckpointFLInstruction.parseInstruction(str);
             case TSMM:
                 return TsmmFLInstruction.parseInstruction(str);
             case Reblock:

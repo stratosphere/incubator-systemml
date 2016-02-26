@@ -1,5 +1,7 @@
 package org.apache.sysml.runtime.instructions.flink;
 
+import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.sysml.hops.recompile.Recompiler;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
@@ -8,8 +10,12 @@ import org.apache.sysml.runtime.controlprogram.context.ExecutionContext;
 import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
+import org.apache.sysml.runtime.instructions.spark.data.RDDProperties;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.MatrixFormatMetaData;
+import org.apache.sysml.runtime.matrix.data.InputInfo;
+import org.apache.sysml.runtime.matrix.data.MatrixBlock;
+import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.matrix.operators.Operator;
 
 public class ReblockFLInstruction extends UnaryFLInstruction {
@@ -60,11 +66,47 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
         if(iimd == null) {
             throw new DMLRuntimeException("Error: Metadata not found");
         }
+        else if(iimd.getInputInfo() == InputInfo.CSVInputInfo) {
+            RDDProperties properties = mo.getRddProperties();
+            CSVReblockFLInstruction csvInstruction;
+            boolean hasHeader = false;
+            String delim = ",";
+            boolean fill = false;
+            double missingValue = 0;
+            if (properties != null) {
+                hasHeader = properties.isHasHeader();
+                delim = properties.getDelim();
+                fill = properties.isFill();
+                missingValue = properties.getMissingValue();
+            }
 
-        //check for in-memory reblock (w/ lazy spark context, potential for latency reduction)
-        if( Recompiler.checkCPReblock(flec, input1.getName()) ) {
-            Recompiler.executeInMemoryReblock(flec, input1.getName(), output.getName());
-            return;
+            csvInstruction = new CSVReblockFLInstruction(null, input1, output, mcOut.getRowsPerBlock(), mcOut.getColsPerBlock(),
+                    hasHeader, delim, fill, missingValue, "csvreblk", instString);
+            csvInstruction.processInstruction(flec);
+        }
+        else if(iimd.getInputInfo()== InputInfo.BinaryBlockInputInfo)
+        {
+            /// HACK ALERT: Workaround for MLContext
+            if(mc.getRowsPerBlock() == mcOut.getRowsPerBlock() && mc.getColsPerBlock() == mcOut.getColsPerBlock()) {
+                if(mo.getRDDHandle() != null) {
+                    DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = (DataSet<Tuple2<MatrixIndexes, MatrixBlock>>) mo.getDataSetHandle().getDataSet();
+
+                    //put output RDD handle into symbol table
+                    flec.setDataSetHandleForVariable(output.getName(), out);
+                    flec.addLineageDataSet(output.getName(), input1.getName());
+                }
+                else {
+                    throw new DMLRuntimeException("Input DataSet is not accessible through buffer pool for ReblockFLInstruction:" + iimd.getInputInfo());
+                }
+            }
+            else
+            {
+                //TODO BINARY BLOCK <- BINARY BLOCK (different sizes)
+                throw new DMLRuntimeException("Input DataSet is not accessible through buffer pool for ReblockFLInstruction:" + iimd.getInputInfo());
+            }
+        }
+        else {
+            throw new DMLRuntimeException("The given InputInfo is not implemented for ReblockSPInstruction:" + iimd.getInputInfo());
         }
 
     }
