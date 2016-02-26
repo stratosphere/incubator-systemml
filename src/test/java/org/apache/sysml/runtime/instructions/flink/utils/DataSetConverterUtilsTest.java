@@ -2,6 +2,7 @@ package org.apache.sysml.runtime.instructions.flink.utils;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
@@ -19,7 +20,7 @@ public class DataSetConverterUtilsTest {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
         String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
-        DataSet<String> input = env.readTextFile(testFile);
+        DataSource<Tuple2<Integer, String>> input = env.readFile(new RowIndexedInputFormat(), testFile);
         int numRowsPerBlock = 10;
         int numColsPerBlock = 10;
 

@@ -20,11 +20,10 @@ import org.apache.sysml.runtime.util.UtilFunctions;
 import java.util.Iterator;
 import java.util.List;
 
-
 public class DataSetConverterUtils {
 
     public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> csvToBinaryBlock(ExecutionEnvironment env,
-                                                                               DataSet<String> input,
+                                                                               DataSet<Tuple2<Integer, String>> input,
                                                                                MatrixCharacteristics mcOut,
                                                                                boolean hasHeader,
                                                                                String delim,
@@ -34,8 +33,8 @@ public class DataSetConverterUtils {
         //determine unknown dimensions and sparsity if required
         if (!mcOut.dimsKnown(true)) {
             try {
-                List<String> row = input.map(new CSVAnalysisFunction(delim)).first(1).collect();//.output(new DiscardingOutputFormat());
-                JobExecutionResult result = env.getLastJobExecutionResult(); //env.execute("Calculate non zero values");
+                List<String> row = input.map(new CSVAnalysisFunction(delim)).first(1).collect();
+                JobExecutionResult result = env.getLastJobExecutionResult();
                 long numRows = result.getAccumulatorResult(CSVAnalysisFunction.NUM_ROWS);
                 numRows = numRows - (hasHeader ? 1 : 0);
                 long numCols = row.get(0).split(delim).length;
@@ -43,16 +42,14 @@ public class DataSetConverterUtils {
 
                 mcOut.set(numRows, numCols, mcOut.getRowsPerBlock(), mcOut.getColsPerBlock(), nonZeroValues);
             } catch (Exception e) {
-                throw new DMLRuntimeException("Could not get metadata for input dataset: ", e);
+                throw new DMLRuntimeException("Could not get metadata for input data set: ", e);
             }
         }
 
-        //prepare csv w/ row indexes (sorted by filenames)
-        DataSet<Tuple2<Long, String>> prepinput = DataSetUtils.zipWithIndex(input);
-
-        //convert csv rdd to binary block rdd (w/ partial blocks)
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = prepinput.mapPartition(new CSVToBinaryBlockFunction(mcOut, delim, fill, fillValue));
-
+        // zip with row id
+        DataSet<Tuple2<Long, String>> indexed = IndexUtils.zipWithRowIndex(input);
+        //convert to binary block rdd (w/ partial blocks)
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = indexed.mapPartition(new CSVToBinaryBlockFunction(mcOut, delim, fill, fillValue));
         //aggregate partial matrix blocks
         out = DataSetAggregateUtils.mergeByKey(out);
 
@@ -61,7 +58,7 @@ public class DataSetConverterUtils {
 
 
     /**
-     * This functions allows to map rdd partitions of csv rows into a set of partial binary blocks.
+     * This functions allows to map dataset partitions of csv rows into a set of partial binary blocks.
      * <p>
      * NOTE: For this csv to binary block function, we need to hold all output blocks per partition
      * in-memory. Hence, we keep state of all column blocks and aggregate row segments into these blocks.
@@ -161,7 +158,7 @@ public class DataSetConverterUtils {
         }
     }
 
-    private static class CSVAnalysisFunction extends RichMapFunction<String, String> {
+    private static class CSVAnalysisFunction extends RichMapFunction<Tuple2<Integer, String>, String> {
 
         public static final String NUM_ROWS = "numRows";
         public static final String NON_ZERO_VALUES = "nonZeroValues";
@@ -182,10 +179,9 @@ public class DataSetConverterUtils {
         }
 
         @Override
-        public String map(String line) throws Exception {
+        public String map(Tuple2<Integer, String> tuple) throws Exception {
             //parse input line
-            String[] cols = IOUtilFunctions.split(line, delimiter);
-
+            String[] cols = IOUtilFunctions.split(tuple.f1, delimiter);
             //determine number of non-zeros of row (w/o string parsing)
             long lnnz = 0;
             for (String col : cols) {
@@ -193,12 +189,11 @@ public class DataSetConverterUtils {
                     lnnz++;
                 }
             }
-
             //update counters
             this.nonZeroValues.add(lnnz);
             this.numValues.add(1);
 
-            return line;
+            return tuple.f1;
         }
     }
 }
