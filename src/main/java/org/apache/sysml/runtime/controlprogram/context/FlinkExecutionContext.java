@@ -22,6 +22,7 @@ import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 
 import java.io.IOException;
+import java.util.LinkedList;
 
 public class FlinkExecutionContext extends ExecutionContext {
 
@@ -36,7 +37,7 @@ public class FlinkExecutionContext extends ExecutionContext {
     protected FlinkExecutionContext(boolean allocateVars, Program prog) {
         super(allocateVars, prog);
 
-        if (OptimizerUtils.isHybridExecutionMode())
+        //if (OptimizerUtils.isHybridExecutionMode())
             initFlinkContext();
     }
 
@@ -86,8 +87,21 @@ public class FlinkExecutionContext extends ExecutionContext {
         }
         //CASE 2: dirty in memory data or cached result of rdd operations
         else if (mo.isDirty() || mo.isCached(false)) {
-            //TODO
-            mo.getDebugName();
+            //get in-memory matrix block and parallelize it
+            //w/ guarded parallelize (fallback to export, rdd from file if too large)
+            boolean fromFile = false;
+           // TODO (see spark case for large matrices)
+
+            //default case
+            MatrixBlock mb = mo.acquireRead(); //pin matrix in memory
+            dataSet = toDataSet(getFlinkContext(), mb, (int)mo.getNumRowsPerBlock(), (int)mo.getNumColumnsPerBlock());
+            mo.release(); //unpin matrix
+
+
+            //keep rdd handle for future operations on it
+            DataSetObject dshandle = new DataSetObject(dataSet, mo.getVarName());
+            dshandle.setHDFSFile(fromFile);
+            mo.setDataSetHandle(dshandle);
         }
         //CASE 3: non-dirty (file exists on HDFS)
         else {
@@ -125,6 +139,54 @@ public class FlinkExecutionContext extends ExecutionContext {
     }
 
     private synchronized static void initFlinkContext() {
+        _execEnv = ExecutionEnvironment.getExecutionEnvironment();
+    }
 
+    /**
+     * Utility method for creating an RDD out of an in-memory matrix block.
+     *
+     * @param sc
+     * @param block
+     * @return
+     * @throws DMLUnsupportedOperationException
+     * @throws DMLRuntimeException
+     */
+    public static DataSet<Tuple2<MatrixIndexes,MatrixBlock>> toDataSet(ExecutionEnvironment env, MatrixBlock src, int brlen, int bclen)
+            throws DMLRuntimeException, DMLUnsupportedOperationException
+    {
+        LinkedList<Tuple2<MatrixIndexes,MatrixBlock>> list = new LinkedList<Tuple2<MatrixIndexes,MatrixBlock>>();
+
+        if(    src.getNumRows() <= brlen
+                && src.getNumColumns() <= bclen )
+        {
+            list.addLast(new Tuple2<MatrixIndexes,MatrixBlock>(new MatrixIndexes(1,1), src));
+        }
+        else
+        {
+            boolean sparse = src.isInSparseFormat();
+
+            //create and write subblocks of matrix
+            for(int blockRow = 0; blockRow < (int)Math.ceil(src.getNumRows()/(double)brlen); blockRow++)
+                for(int blockCol = 0; blockCol < (int)Math.ceil(src.getNumColumns()/(double)bclen); blockCol++)
+                {
+                    int maxRow = (blockRow*brlen + brlen < src.getNumRows()) ? brlen : src.getNumRows() - blockRow*brlen;
+                    int maxCol = (blockCol*bclen + bclen < src.getNumColumns()) ? bclen : src.getNumColumns() - blockCol*bclen;
+
+                    MatrixBlock block = new MatrixBlock(maxRow, maxCol, sparse);
+
+                    int row_offset = blockRow*brlen;
+                    int col_offset = blockCol*bclen;
+
+                    //copy submatrix to block
+                    src.sliceOperations( row_offset, row_offset+maxRow-1,
+                            col_offset, col_offset+maxCol-1, block );
+
+                    //append block to sequence file
+                    MatrixIndexes indexes = new MatrixIndexes(blockRow+1, blockCol+1);
+                    list.addLast(new Tuple2<MatrixIndexes,MatrixBlock>(indexes, block));
+                }
+        }
+
+        return env.fromCollection(list);
     }
 }
