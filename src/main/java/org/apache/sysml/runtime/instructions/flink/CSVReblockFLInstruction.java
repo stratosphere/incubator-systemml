@@ -4,6 +4,7 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.sysml.hops.recompile.Recompiler;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
@@ -86,6 +87,13 @@ public class CSVReblockFLInstruction extends UnaryFLInstruction {
         MatrixCharacteristics mcIn = flec.getMatrixCharacteristics(input1.getName());
         MatrixCharacteristics mcOut = flec.getMatrixCharacteristics(output.getName());
         mcOut.set(mcIn.getRows(), mcIn.getCols(), _brlen, _bclen);
+
+        //check for in-memory reblock
+        //TODO this is set to be always the case for now! Should also Check in the case of flink!
+        if( true /*Recompiler.checkCPReblock(flec, input1.getName())*/ ) {
+            Recompiler.executeInMemoryReblock(flec, input1.getName(), output.getName());
+            return;
+        }
 
         // get dataset handle
         DataSet<Tuple2<LongWritable, Text>> in = (DataSet<Tuple2<LongWritable, Text>>) flec.getDataSetHandleForVariable(input1.getName(), iimd.getInputInfo());
