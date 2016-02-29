@@ -2,6 +2,7 @@ package org.apache.sysml.runtime.instructions.flink;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mesos.Protos;
 import org.apache.sysml.api.FlinkMLOutput;
@@ -16,6 +17,7 @@ import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.instructions.cp.VariableCPInstruction;
 import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetConverterUtils;
+import org.apache.sysml.runtime.instructions.flink.utils.RowIndexedInputFormat;
 import org.apache.sysml.runtime.instructions.mr.ReblockInstruction;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.MatrixDimensionsMetaData;
@@ -29,68 +31,11 @@ import org.junit.Test;
 import java.util.HashMap;
 
 public class TsmmFLInstructionTest {
-    @Test
-    public void testTSMM() throws Exception {
-        ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-
-        String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
-        String outFile  = "/tmp/sysml";
-        DataSet<String> input = env.readTextFile(testFile);
-        int numRowsPerBlock = 10;
-        int numColsPerBlock = 10;
-
-        // get execution context
-        FlinkExecutionContext flec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
-
-        // transform data into dataset with systemml binary format
-        MatrixCharacteristics mcOut = new MatrixCharacteristics(0L, 0L, numRowsPerBlock, numColsPerBlock);
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvStringToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
-
-        //execute variable isntructions to set up scratch space
-//        VariableCPInstruction readVar1   = VariableCPInstruction.parseInstruction( "CP°createvar°pREADm°/home/fschueler/Repos/incubator-systemml/src/test/resources/flink/haberman.data°false°textcell°306°4°-1°-1°-1");
-//        VariableCPInstruction createVar1 = VariableCPInstruction.parseInstruction( "CP°createvar°_mVar1°scratch_space//_p22279_127.0.1.1//_t0/temp1°true°binaryblock°306°4°1000°1000°-1");
-//        //                                                                         "SPARK°rblk°pREADm·MATRIX·DOUBLE°_mVar1·MATRIX·DOUBLE°1000°1000°true"
-        VariableCPInstruction createvar2 = VariableCPInstruction.parseInstruction( "CP°createvar°_mVar2°scratch_space//_p22279_127.0.1.1//_t0/temp2°true°binaryblock°306°4°1000°1000°-1");
-//        //                                                                         "SPARK°chkpoint°_mVar1·MATRIX·DOUBLE°_mVar2·MATRIX·DOUBLE°MEMORY_AND_DISK"
-//        VariableCPInstruction rmVar1     = VariableCPInstruction.parseInstruction( "CP°rmvar°_mVar1");
-//        VariableCPInstruction createVar3 = VariableCPInstruction.parseInstruction( "CP°createvar°_mVar3°scratch_space//_p22279_127.0.1.1//_t0/temp3°true°binaryblock°4°4°1000°1000°-1");
-        TsmmFLInstruction     inst       = TsmmFLInstruction.parseInstruction(     "FLINK°tsmm°_mVar2·MATRIX·DOUBLE°_mVar3·MATRIX·DOUBLE°LEFT");
-//        VariableCPInstruction rmVar2     = VariableCPInstruction.parseInstruction( "CP°rmvar°_mVar2");
-//        //                                                                         "SPARK°write°_mVar3·MATRIX·DOUBLE°/tmp/sysml·SCALAR·STRING·true°textcell·SCALAR·STRING·true"
-//        VariableCPInstruction rmVar3     = VariableCPInstruction.parseInstruction( "CP°rmvar°_mVar3");
-
-        // execute the instructions
-        MatrixBlock out = null;
-
-//        readVar1.processInstruction(flec);
-//        createVar1.processInstruction(flec);
-//        createvar2.processInstruction(flec);
-//        rmVar1.processInstruction(flec);
-//        createVar3.processInstruction(flec);
-        // mock the missing parts and instructions here
-        String                  inputName = createvar2.getInput1().getName();
-        DataSetObject           m         = new DataSetObject(mat, inputName);
-        MatrixObject            mo1       = new MatrixObject(Expression.ValueType.DOUBLE, testFile);
-        MatrixFormatMetaData    mfmd      = new MatrixFormatMetaData(mcOut, OutputInfo.BinaryBlockOutputInfo, InputInfo.BinaryBlockInputInfo);
-        mo1.setDataSetHandle(m);
-        mo1.setMetaData(mfmd);
-        mo1.setVarName(inputName);
-        //flec.removeVariable(inputName);
-        flec.setVariable(inputName, mo1);
-        // end mock
-        out = inst.processInstructionWReturn(flec);
-//        rmVar2.processInstruction(flec);
-//        rmVar3.processInstruction(flec);
-
-        System.out.println(out);
-    }
 
     @Test
     public void testTSMMWithInstructions() throws Exception {
         // input data and blocking parameters
         String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
-        int numRowsPerBlock = 10;
-        int numColsPerBlock = 10;
 
         // get execution context
         FlinkExecutionContext flec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
@@ -141,9 +86,9 @@ public class TsmmFLInstructionTest {
 
         // load and transform data into dataset with systemml binary format
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-        DataSet<String> input = env.readTextFile(testFile);
+        DataSource<Tuple2<Integer, String>> input = env.readFile(new RowIndexedInputFormat(), testFile);
         MatrixCharacteristics mcOut = new MatrixCharacteristics(0L, 0L, numRowsPerBlock, numColsPerBlock);
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvStringToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
 
         // create MLContext
         MLContext mlContext = new MLContext(env);

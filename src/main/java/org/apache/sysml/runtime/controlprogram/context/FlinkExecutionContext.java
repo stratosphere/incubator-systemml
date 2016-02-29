@@ -17,6 +17,7 @@ import org.apache.sysml.runtime.DMLUnsupportedOperationException;
 import org.apache.sysml.runtime.controlprogram.Program;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
 import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
+import org.apache.sysml.runtime.instructions.flink.utils.RowIndexedInputFormat;
 import org.apache.sysml.runtime.matrix.data.InputInfo;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
@@ -108,21 +109,7 @@ public class FlinkExecutionContext extends ExecutionContext {
             if (inputInfo == InputInfo.BinaryBlockInputInfo) {
                 //TODO
             } else if (inputInfo == InputInfo.TextCellInputInfo || inputInfo == InputInfo.CSVInputInfo || inputInfo == InputInfo.MatrixMarketInputInfo) {
-                // Set up the Hadoop TextInputFormat.
-                HadoopInputFormat<LongWritable, Text> hadoopIF;
-                try {
-                    Job job = Job.getInstance();
-                    hadoopIF =
-                            new HadoopInputFormat<LongWritable, Text>(
-                                    new TextInputFormat(), LongWritable.class, Text.class, job
-                            );
-                    TextInputFormat.addInputPath(job, new Path(mo.getFileName()));
-                } catch (IOException ioe) {
-                    throw new DMLRuntimeException("Could not read resource from hdfs: " + mo.getFileName());
-                }
-
-                // Read data using the Hadoop TextInputFormat.
-                dataSet = getFlinkContext().createInput(hadoopIF);
+                dataSet = getFlinkContext().readFile(new RowIndexedInputFormat(), mo.getFileName());
                 //FIXME (this fails with nullpointer exception)
             } else if(inputInfo == InputInfo.BinaryCellInputInfo) {
                 //TODO
