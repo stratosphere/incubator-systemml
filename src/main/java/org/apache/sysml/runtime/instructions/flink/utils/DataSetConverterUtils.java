@@ -2,10 +2,11 @@ package org.apache.sysml.runtime.instructions.flink.utils;
 
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.accumulators.LongCounter;
-import org.apache.flink.api.common.functions.MapPartitionFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.functions.*;
+import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.DataSetUtils;
 import org.apache.flink.configuration.Configuration;
@@ -13,6 +14,7 @@ import org.apache.flink.util.Collector;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.io.IOUtilFunctions;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
+import org.apache.sysml.runtime.matrix.data.CSVFileFormatProperties;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.util.UtilFunctions;
@@ -155,6 +157,85 @@ public class DataSetConverterUtils {
 
             //flush last blocks
             flushBlocksToList(ix, mb, out);
+        }
+    }
+
+    public static DataSet<String> binaryBlockToCsv(DataSet<Tuple2<MatrixIndexes, MatrixBlock>> inBlock,
+                                                   MatrixCharacteristics mcIn, CSVFileFormatProperties csvProps,
+                                                   boolean strict) {
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> input = inBlock;
+        if (mcIn.getCols()>mcIn.getColsPerBlock()) {
+            input = input.groupBy(new BinaryBlockGroupByRow()).reduceGroup(new ConcatenateBlocks(mcIn));
+        }
+
+        if (strict) {
+            input = input.sortPartition(0, Order.ASCENDING);
+        }
+        DataSet<String> out = input.flatMap(new BinaryBlockToCsvFlatMapper(csvProps));
+        return out;
+    }
+
+    public static class BinaryBlockToCsvFlatMapper implements FlatMapFunction<Tuple2<MatrixIndexes, MatrixBlock>, String> {
+        private final CSVFileFormatProperties csvProps;
+        public BinaryBlockToCsvFlatMapper(CSVFileFormatProperties csvProps) {
+            this.csvProps = csvProps;
+        }
+
+        @Override
+        public void flatMap(Tuple2<MatrixIndexes, MatrixBlock> value, Collector<String> out) throws Exception {
+            MatrixBlock block = value.f1;
+            int numRows = block.getNumRows();
+            int numCols = block.getNumColumns();
+            StringBuilder strBld = new StringBuilder(numCols * numCols - 1);;
+            for (int r = 0; r < numRows; r++) {
+                strBld.setLength(0);
+                for (int c = 0; c < numCols; c++) {
+                    double v = block.getValue(r, c);
+                    strBld.append(v);
+                    if (c < numCols - 1) {
+                        strBld.append(csvProps.getDelim());
+                    }
+                }
+                out.collect(strBld.toString());
+            }
+
+        }
+    }
+
+    public static class BinaryBlockGroupByRow implements KeySelector<Tuple2<MatrixIndexes, MatrixBlock>, Long> {
+
+        @Override
+        public Long getKey(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
+            return value.f0.getRowIndex();
+        }
+    }
+
+    public static class ConcatenateBlocks implements GroupReduceFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>> {
+
+        private final MatrixCharacteristics matrixCharacteristics;
+
+        public ConcatenateBlocks(MatrixCharacteristics matrixCharacteristics) {
+            this.matrixCharacteristics = matrixCharacteristics;
+        }
+
+        @Override
+        public void reduce(Iterable<Tuple2<MatrixIndexes, MatrixBlock>> values, Collector<Tuple2<MatrixIndexes, MatrixBlock>> out) throws Exception {
+            long numCols = matrixCharacteristics.getCols();
+
+            long currentRow = -1;
+            MatrixBlock block = null;
+            for (Tuple2<MatrixIndexes, MatrixBlock> indexedBlock : values) {
+                if (block == null) {
+                    block = new MatrixBlock(indexedBlock.f1.getNumRows(), (int) numCols, indexedBlock.f1.isInSparseFormat());
+                    currentRow = indexedBlock.f0.getRowIndex();
+                }
+                int cl = ((int) indexedBlock.f0.getColumnIndex() - 1) * indexedBlock.f1.getNumColumns();
+                int cu = (int) indexedBlock.f0.getColumnIndex() * indexedBlock.f1.getNumColumns() - 1;
+                block.copy(0, 0, cl, cu, indexedBlock.f1, false);
+            }
+            block.recomputeNonZeros();
+            MatrixIndexes index = new MatrixIndexes(currentRow, 1);
+            out.collect(new Tuple2<MatrixIndexes, MatrixBlock>(index, block));
         }
     }
 
