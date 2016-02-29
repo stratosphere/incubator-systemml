@@ -32,10 +32,20 @@ import java.util.HashMap;
 
 public class TsmmFLInstructionTest {
 
+    /**
+     * Tests the instructions that result from the following DML script:
+     *
+     * m = read("tesfile", rows=306, cols=4)
+     * mm = t(m) %*% m
+     * write(mm, "outputPath", format="csv")
+     *
+     * @throws Exception
+     */
     @Test
     public void testTSMMWithInstructions() throws Exception {
         // input data and blocking parameters
         String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
+        String outputPath = "/tmp/sysml";
 
         // get execution context
         FlinkExecutionContext flec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
@@ -50,7 +60,7 @@ public class TsmmFLInstructionTest {
         VariableCPInstruction createVar3 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar3°scratch_space//_p22279_127.0.1.1//_t0/temp3°true°binaryblock°4°4°1000°1000°-1");
         TsmmFLInstruction     inst       = TsmmFLInstruction.parseInstruction(       "FLINK°tsmm°_mVar2·MATRIX·DOUBLE°_mVar3·MATRIX·DOUBLE°LEFT");
         VariableCPInstruction rmVar2     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar2");
-        //                                                                           "SPARK°write°_mVar3·MATRIX·DOUBLE°/tmp/sysml·SCALAR·STRING·true°textcell·SCALAR·STRING·true"
+        WriteFLInstruction    wrVar3     = WriteFLInstruction.parseInstruction(      "FLINK°write°_mVar3·MATRIX·DOUBLE°" + outputPath + "·SCALAR·STRING·true°csv·SCALAR·STRING·true°false°,°false°true");
         VariableCPInstruction rmVar3     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar3");
 
         // execute the instructions
@@ -65,8 +75,8 @@ public class TsmmFLInstructionTest {
         createVar3.processInstruction(flec);
         out = inst.processInstructionWReturn(flec);
         rmVar2.processInstruction(flec);
-//      writeVar3.processInstruction(flec);
-//      rmVar3.processInstruction(flec);
+        wrVar3.processInstruction(flec);
+        rmVar3.processInstruction(flec);
 
         System.out.println(out);
     }
