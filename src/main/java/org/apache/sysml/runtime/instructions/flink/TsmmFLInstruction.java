@@ -46,9 +46,6 @@ public class TsmmFLInstruction extends UnaryFLInstruction {
 
     @Override
     public void processInstruction(ExecutionContext ec) throws DMLRuntimeException, DMLUnsupportedOperationException {
-    }
-
-    public MatrixBlock processInstructionWReturn(ExecutionContext ec) throws DMLRuntimeException, DMLUnsupportedOperationException {
         FlinkExecutionContext fec = (FlinkExecutionContext) ec;
 
         //get input
@@ -58,10 +55,7 @@ public class TsmmFLInstruction extends UnaryFLInstruction {
 
         //put output block into symbol table (no lineage because single block)
         //this also includes implicit maintenance of matrix characteristics
-        //fec.setMatrixOutput(output.getName(), out);
-        // TODO the registered output needs a way to be represented as matrix object --> we need write instructions etc.
-
-        return out;
+        fec.setMatrixOutput(output.getName(), out);
     }
 
     private static class DataSetTSMMFunction implements MapFunction<Tuple2<MatrixIndexes, MatrixBlock>,MatrixBlock> {
