@@ -96,7 +96,7 @@ public class CSVReblockFLInstruction extends UnaryFLInstruction {
         }
 
         // get dataset handle
-        DataSet<Tuple2<LongWritable, Text>> in = (DataSet<Tuple2<LongWritable, Text>>) flec.getDataSetHandleForVariable(input1.getName(), iimd.getInputInfo());
+        DataSet<Tuple2<Integer, String>> in = (DataSet<Tuple2<Integer, String>>) flec.getDataSetHandleForVariable(input1.getName(), iimd.getInputInfo());
 
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = DataSetConverterUtils.csvToBinaryBlock(
                 flec.getFlinkContext(), in, mcOut, _hasHeader, _delim, _fill, _missingValue);

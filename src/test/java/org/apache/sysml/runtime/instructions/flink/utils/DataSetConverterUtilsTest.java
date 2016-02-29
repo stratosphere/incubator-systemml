@@ -31,7 +31,7 @@ public class DataSetConverterUtilsTest {
         int numColsPerBlock = 10;
 
         MatrixCharacteristics mcOut = new MatrixCharacteristics(0L, 0L, numRowsPerBlock, numColsPerBlock);
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvStringToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mat = DataSetConverterUtils.csvToBinaryBlock(env, input, mcOut, false, ",", false, 0.0);
 
         List<Tuple2<MatrixIndexes, MatrixBlock>> blocks = mat.collect();
 
