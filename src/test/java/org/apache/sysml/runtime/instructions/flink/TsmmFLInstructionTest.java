@@ -64,8 +64,6 @@ public class TsmmFLInstructionTest {
         VariableCPInstruction rmVar3     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar3");
 
         // execute the instructions
-        MatrixBlock out;
-
         readVar1.processInstruction(flec);
         createVar1.processInstruction(flec);
         reblock.processInstruction(flec);
@@ -73,12 +71,10 @@ public class TsmmFLInstructionTest {
         chkpnt.processInstruction(flec);
         rmVar1.processInstruction(flec);
         createVar3.processInstruction(flec);
-        out = inst.processInstructionWReturn(flec);
+        inst.processInstruction(flec);
         rmVar2.processInstruction(flec);
         wrVar3.processInstruction(flec);
         rmVar3.processInstruction(flec);
-
-        System.out.println(out);
     }
 
     @Test
