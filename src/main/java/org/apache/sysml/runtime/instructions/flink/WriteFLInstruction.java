@@ -2,6 +2,7 @@ package org.apache.sysml.runtime.instructions.flink;
 
 import org.apache.commons.io.IOExceptionWithCause;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.record.io.CsvOutputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.sysml.parser.Expression;
 import org.apache.sysml.runtime.DMLRuntimeException;
@@ -118,7 +119,7 @@ public class WriteFLInstruction extends FLInstruction {
 
         // TODO matrixmarket && Textcell output
         if (oi == OutputInfo.CSVOutputInfo) {
-            DataSet<String> out;
+            DataSet<String> out = null;
 
             if (isInputMatrixBlock) {
                 //TODO compute nnz values
@@ -126,6 +127,7 @@ public class WriteFLInstruction extends FLInstruction {
             } else {
                 //TODO: This case is applicable when the CSV output from transform() is written out
             }
+            out.writeAsText(fname);
         }
         //TODO binaryblock output
         else {

@@ -45,7 +45,7 @@ public class TsmmFLInstructionTest {
     public void testTSMMWithInstructions() throws Exception {
         // input data and blocking parameters
         String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
-        String outputPath = "/tmp/sysml";
+        String outputPath = "/tmp/sysml/output/tsmm_out.csv";
 
         // get execution context
         FlinkExecutionContext flec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
@@ -75,6 +75,8 @@ public class TsmmFLInstructionTest {
         rmVar2.processInstruction(flec);
         wrVar3.processInstruction(flec);
         rmVar3.processInstruction(flec);
+
+        flec.getFlinkContext().execute("WriteFLInstruction");
     }
 
     @Test
