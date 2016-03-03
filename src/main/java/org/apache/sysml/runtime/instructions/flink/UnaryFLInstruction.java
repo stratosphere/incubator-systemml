@@ -3,7 +3,7 @@ package org.apache.sysml.runtime.instructions.flink;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.matrix.operators.Operator;
 
-public class UnaryFLInstruction extends ComputationFLInstruction {
+public abstract class UnaryFLInstruction extends ComputationFLInstruction {
 
     public UnaryFLInstruction(Operator op, CPOperand in, CPOperand out,
                               String opcode, String instr) {

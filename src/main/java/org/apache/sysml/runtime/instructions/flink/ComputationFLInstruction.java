@@ -4,7 +4,7 @@ package org.apache.sysml.runtime.instructions.flink;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.matrix.operators.Operator;
 
-public class ComputationFLInstruction extends FLInstruction {
+public abstract class ComputationFLInstruction extends FLInstruction {
 
     public CPOperand output;
     public CPOperand input1, input2, input3;
