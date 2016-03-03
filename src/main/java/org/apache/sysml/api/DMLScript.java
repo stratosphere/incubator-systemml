@@ -101,7 +101,7 @@ public class DMLScript
 		HYBRID_FLINK
 	};
 	
-	public static RUNTIME_PLATFORM rtplatform = RUNTIME_PLATFORM.FLINK; //RUNTIME_PLATFORM.HYBRID; //default exec mode
+	public static RUNTIME_PLATFORM rtplatform = RUNTIME_PLATFORM.HYBRID; //default exec mode
 	public static boolean STATISTICS = false; //default statistics
 	public static boolean ENABLE_DEBUG_MODE = false; //default debug mode
 	public static boolean USE_LOCAL_SPARK_CONFIG = true; //set default local spark configuration - used for local testing
@@ -523,6 +523,8 @@ public class DMLScript
 			lrtplatform = RUNTIME_PLATFORM.HYBRID_SPARK;
         else if ( platform.equalsIgnoreCase("flink"))
             lrtplatform = RUNTIME_PLATFORM.FLINK;
+		else if ( platform.equalsIgnoreCase("hybrid_flink"))
+			lrtplatform = RUNTIME_PLATFORM.HYBRID_FLINK;
 		else 
 			System.err.println("ERROR: Unknown runtime platform: " + platform);
 		
