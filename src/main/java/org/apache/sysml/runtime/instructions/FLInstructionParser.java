@@ -1,12 +1,10 @@
 package org.apache.sysml.runtime.instructions;
 
+import org.apache.sysml.lops.Checkpoint;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
-import org.apache.sysml.runtime.instructions.flink.CheckpointFLInstruction;
-import org.apache.sysml.runtime.instructions.flink.FLInstruction;
+import org.apache.sysml.runtime.instructions.flink.*;
 import org.apache.sysml.runtime.instructions.flink.FLInstruction.FLINSTRUCTION_TYPE;
-import org.apache.sysml.runtime.instructions.flink.ReblockFLInstruction;
-import org.apache.sysml.runtime.instructions.flink.TsmmFLInstruction;
 
 import java.util.HashMap;
 
@@ -21,7 +19,14 @@ public class FLInstructionParser extends InstructionParser {
         String2FLInstructionType.put( "tsmm" , FLINSTRUCTION_TYPE.TSMM);
 
         // REBLOCK Instruction Opcodes
-        String2FLInstructionType.put( "rblk" , FLINSTRUCTION_TYPE.Reblock);
+        String2FLInstructionType.put( "rblk"    , FLINSTRUCTION_TYPE.Reblock);
+        String2FLInstructionType.put( "csvrblk" , FLINSTRUCTION_TYPE.CSVReblock);
+
+        // Spark-specific instructions
+        String2FLInstructionType.put( Checkpoint.OPCODE, FLINSTRUCTION_TYPE.Checkpoint);
+
+        String2FLInstructionType.put( "write"   , FLINSTRUCTION_TYPE.Write);
+
     }
 
     public static FLInstruction parseSingleInstruction(String str)
@@ -53,6 +58,14 @@ public class FLInstructionParser extends InstructionParser {
                 return TsmmFLInstruction.parseInstruction(str);
             case Reblock:
                 return ReblockFLInstruction.parseInstruction(str);
+            case CSVReblock:
+                return CSVReblockFLInstruction.parseInstruction(str);
+            case Write:
+                return WriteFLInstruction.parseInstruction(str);
+            case Checkpoint:
+                return CheckpointFLInstruction.parseInstruction(str);
+
+            case INVALID:
             default:
                 throw new DMLUnsupportedOperationException("Invalid FL Instruction Type: " + fltype);
         }

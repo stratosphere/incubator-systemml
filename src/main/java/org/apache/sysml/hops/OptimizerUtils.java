@@ -548,6 +548,20 @@ public class OptimizerUtils
 		return (   DMLScript.rtplatform == RUNTIME_PLATFORM.SPARK
 				|| DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_SPARK);
 	}
+
+	public static boolean isFlinkExecutionMode() {
+		return (   DMLScript.rtplatform == RUNTIME_PLATFORM.FLINK
+				|| DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_FLINK);
+	}
+
+	public static ExecType getRemoteExecType() {
+		if (isSparkExecutionMode())
+			return ExecType.SPARK;
+		else if (isFlinkExecutionMode())
+			return ExecType.FLINK;
+		else
+			return ExecType.MR;
+	}
 	
 	/**
 	 * 
@@ -555,7 +569,8 @@ public class OptimizerUtils
 	 */
 	public static boolean isHybridExecutionMode() {
 		return (  DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID 
-			   || DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_SPARK );
+			   || DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_SPARK
+			   || DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_FLINK);
 	}
 	
 	/**
