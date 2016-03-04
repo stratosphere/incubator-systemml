@@ -12,6 +12,13 @@ public abstract class BinaryFLInstruction extends FLInstruction {
 
     protected CPOperand input1, input2, output;
 
+    public BinaryFLInstruction(CPOperand input1, CPOperand input2, CPOperand output, String opcode, String istr) {
+        super(opcode, istr);
+        this.input1 = input1;
+        this.input2 = input2;
+        this.output = output;
+    }
+
     public BinaryFLInstruction(Operator op, CPOperand input1, CPOperand input2, CPOperand output, String opcode, String istr) {
         super(op, opcode, istr);
         this.input1 = input1;
