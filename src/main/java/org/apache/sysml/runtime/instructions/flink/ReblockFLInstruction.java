@@ -66,6 +66,12 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
         if(iimd == null) {
             throw new DMLRuntimeException("Error: Metadata not found");
         }
+
+        //TODO check for in-memory reblock
+
+        if(iimd.getInputInfo() == InputInfo.TextCellInputInfo || iimd.getInputInfo() == InputInfo.MatrixMarketInputInfo ) {
+
+        }
         else if(iimd.getInputInfo() == InputInfo.CSVInputInfo) {
             RDDProperties properties = mo.getRddProperties();
             CSVReblockFLInstruction csvInstruction;
@@ -84,26 +90,12 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
                     hasHeader, delim, fill, missingValue, "csvreblk", instString);
             csvInstruction.processInstruction(flec);
         }
+        else if(iimd.getInputInfo()==InputInfo.BinaryCellInputInfo) {
+            //TODO
+        }
         else if(iimd.getInputInfo()== InputInfo.BinaryBlockInputInfo)
         {
-            /// HACK ALERT: Workaround for MLContext
-            if(mc.getRowsPerBlock() == mcOut.getRowsPerBlock() && mc.getColsPerBlock() == mcOut.getColsPerBlock()) {
-                if(mo.getRDDHandle() != null) {
-                    DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = (DataSet<Tuple2<MatrixIndexes, MatrixBlock>>) mo.getDataSetHandle().getDataSet();
-
-                    //put output RDD handle into symbol table
-                    flec.setDataSetHandleForVariable(output.getName(), out);
-                    flec.addLineageDataSet(output.getName(), input1.getName());
-                }
-                else {
-                    throw new DMLRuntimeException("Input DataSet is not accessible through buffer pool for ReblockFLInstruction:" + iimd.getInputInfo());
-                }
-            }
-            else
-            {
-                //TODO BINARY BLOCK <- BINARY BLOCK (different sizes)
-                throw new DMLRuntimeException("Input DataSet is not accessible through buffer pool for ReblockFLInstruction:" + iimd.getInputInfo());
-            }
+            //TODO
         }
         else {
             throw new DMLRuntimeException("The given InputInfo is not implemented for ReblockSPInstruction:" + iimd.getInputInfo());
