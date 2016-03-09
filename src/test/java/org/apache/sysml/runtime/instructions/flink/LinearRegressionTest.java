@@ -54,7 +54,7 @@ public class LinearRegressionTest {
                 script,
                 "-nvargs",
                 "X=" + tmp + "/linRegData.csv",
-                "sv=perc.csv",
+                "sv=" + tmp + "/perc.csv",
                 "O=" + tmp + "/linRegDataParts",
                 "ofmt=csv"
         };
@@ -104,12 +104,48 @@ public class LinearRegressionTest {
     }
 
     @Test
-    public void TrainAndTestModel() throws Exception {
+    public void TrainAndTestModelWithDirectSolver() throws Exception {
         String tmp     = tempDir.getCanonicalPath();
-        File   testDir = testFolder.newFolder("linReg");
+        File   testDir = testFolder.newFolder("linRegDS");
 
         // train model
         String script = scriptsPath + "/algorithms/LinearRegDS.dml";
+        String[] args = {
+                "-f",
+                script,
+                "-exec",
+                "hybrid_flink",
+                "-nvargs",
+                "X=" + tmp + "/linRegData.train.data.csv",
+                "Y=" + tmp + "/linRegData.train.labels.csv",
+                "B=" + testDir + "/betas.csv",
+                "fmt=csv"
+        };
+        DMLScript.main(args);
+
+        // test model
+        script = scriptsPath + "/algorithms/GLM-predict.dml";
+        args   = new String[] {
+                "-f",
+                script,
+                "-exec",
+                "hybrid_spark",
+                "-nvargs",
+                "X=" + tmp + "/linRegData.test.data.csv",
+                "Y=" + tmp + "/linRegData.test.labels.csv",
+                "B=" + testDir + "/betas.csv",
+                "fmt=csv"
+        };
+        DMLScript.main(args);
+    }
+
+    @Test
+    public void TrainAndTestModelWithConjugateGradient() throws Exception {
+        String tmp     = tempDir.getCanonicalPath();
+        File   testDir = testFolder.newFolder("linRegCG");
+
+        // train model
+        String script = scriptsPath + "/algorithms/LinearRegCG.dml";
         String[] args = {
                 "-f",
                 script,
