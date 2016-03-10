@@ -32,12 +32,12 @@ import org.junit.Test;
  * </code></pre>
 
  */
-public class MatrixScalarFLInstructionTest {
+public class MatrixScalarArithmeticFLInstructionTest {
 
     @Test
     public void testInstruction() throws Exception {
         String inputFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
-        String outputFile = "/tmp/" + MatrixScalarFLInstructionTest.class.getSimpleName() + "/testInstruction.out";
+        String outputFile = "/tmp/" + MatrixScalarArithmeticFLInstructionTest.class.getSimpleName() + "/testInstruction.out";
         DMLScript.rtplatform = DMLScript.RUNTIME_PLATFORM.FLINK;
         FlinkExecutionContext context = (FlinkExecutionContext) ExecutionContextFactory.createContext();
 
@@ -64,7 +64,7 @@ public class MatrixScalarFLInstructionTest {
 
         // multiply with scalar and write result to Var3
         // this is the instruction under test!
-        MatrixScalarFLInstruction mult = MatrixScalarFLInstruction.parseInstruction(
+        MatrixScalarArithmeticFLInstruction mult = MatrixScalarArithmeticFLInstruction.parseInstruction(
                 "FLINK°*°_mVar2·MATRIX·DOUBLE°3·SCALAR·INT·true°_mVar3·MATRIX·DOUBLE");
         VariableCPInstruction rmVar2 = VariableCPInstruction.parseInstruction(
                 "CP°rmvar°_mVar2");

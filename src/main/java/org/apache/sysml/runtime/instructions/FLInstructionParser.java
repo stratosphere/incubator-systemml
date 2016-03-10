@@ -27,6 +27,26 @@ public class FLInstructionParser extends InstructionParser {
 
         String2FLInstructionType.put( "write"   , FLINSTRUCTION_TYPE.Write);
 
+        // ArithmeticBinary
+        String2FLInstructionType.put( "+"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "-"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "*"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "/"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "%%"   , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "%/%"  , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "1-*"  , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "^"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "^2"   , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "*2"   , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map+"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map-"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map*"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map/"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map%%"   , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map%/%"  , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map1-*"  , FLINSTRUCTION_TYPE.ArithmeticBinary);
+        String2FLInstructionType.put( "map^"    , FLINSTRUCTION_TYPE.ArithmeticBinary);
+
     }
 
     public static FLInstruction parseSingleInstruction(String str)
@@ -54,6 +74,8 @@ public class FLInstructionParser extends InstructionParser {
         switch (fltype) {
             case Reorg:
                 return CheckpointFLInstruction.parseInstruction(str);
+            case ArithmeticBinary:
+                return ArithmeticBinaryFLInstruction.parseInstruction(str);
             case TSMM:
                 return TsmmFLInstruction.parseInstruction(str);
             case Reblock:
