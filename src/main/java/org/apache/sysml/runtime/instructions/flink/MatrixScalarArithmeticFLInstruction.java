@@ -26,34 +26,10 @@ import org.apache.sysml.runtime.matrix.operators.ScalarOperator;
  * <pre><code>FLINK°[OPCODE]°[LEFT OPERAND]°[RIGHT OPERAND]°[OUTPUT]</code></pre>
  * where <code>[LEFT OPERAND] is a matrix and [RIGHT OPERAND] is a scalar, or vice versa.</code>
  */
-public class MatrixScalarFLInstruction extends BinaryFLInstruction {
+public class MatrixScalarArithmeticFLInstruction extends ArithmeticBinaryFLInstruction {
 
-    public MatrixScalarFLInstruction(ScalarOperator op, CPOperand input1, CPOperand input2, CPOperand output, String opcode, String istr) {
+    public MatrixScalarArithmeticFLInstruction(Operator op, CPOperand input1, CPOperand input2, CPOperand output, String opcode, String istr) {
         super(op, input1, input2, output, opcode, istr);
-    }
-
-    public static MatrixScalarFLInstruction parseInstruction(String instr) throws DMLRuntimeException, DMLUnsupportedOperationException {
-        CPOperand left = new CPOperand("", Expression.ValueType.UNKNOWN, Expression.DataType.UNKNOWN);
-        CPOperand right = new CPOperand("", Expression.ValueType.UNKNOWN, Expression.DataType.UNKNOWN);
-        CPOperand output = new CPOperand("", Expression.ValueType.UNKNOWN, Expression.DataType.UNKNOWN);
-        String opCode = parseBinaryInstruction(instr, left, right, output);
-
-        Expression.DataType dt1 = left.getDataType();
-        Expression.DataType dt2 = right.getDataType();
-
-        Operator operator = (dt1 != dt2) ?
-                InstructionUtils.parseScalarBinaryOperator(opCode, (dt1 == Expression.DataType.SCALAR))
-                : InstructionUtils.parseExtendedBinaryOperator(opCode);
-
-        if ((dt1 == Expression.DataType.MATRIX && dt2 == Expression.DataType.SCALAR)
-                || (dt1 == Expression.DataType.SCALAR && dt2 == Expression.DataType.MATRIX)) {
-            return new MatrixScalarFLInstruction((ScalarOperator) operator, left, right, output, opCode, instr);
-        } else {
-            throw new DMLUnsupportedOperationException("Incompatible types\n" +
-                    "Expected: " + Expression.DataType.MATRIX  + " and " + Expression.DataType.SCALAR +
-                    ", or " + Expression.DataType.SCALAR + " and " + Expression.DataType.MATRIX + "\n" +
-                    "Found: " + dt1 + " and " + dt2);
-        }
     }
 
     @Override
@@ -78,6 +54,7 @@ public class MatrixScalarFLInstruction extends BinaryFLInstruction {
 
         // register variable for output
         fec.setDataSetHandleForVariable(output.getName(), out);
+        fec.addLineageDataSet(output.getName(), matrixVar);
     }
 
     /**
