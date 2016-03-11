@@ -64,7 +64,7 @@ public class MatrixScalarArithmeticFLInstructionTest {
 
         // multiply with scalar and write result to Var3
         // this is the instruction under test!
-        MatrixScalarArithmeticFLInstruction mult = MatrixScalarArithmeticFLInstruction.parseInstruction(
+        MatrixScalarArithmeticFLInstruction mult = (MatrixScalarArithmeticFLInstruction) ArithmeticBinaryFLInstruction.parseInstruction(
                 "FLINK°*°_mVar2·MATRIX·DOUBLE°3·SCALAR·INT·true°_mVar3·MATRIX·DOUBLE");
         VariableCPInstruction rmVar2 = VariableCPInstruction.parseInstruction(
                 "CP°rmvar°_mVar2");
