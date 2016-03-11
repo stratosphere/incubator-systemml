@@ -14,6 +14,33 @@ public class FLInstructionParser extends InstructionParser {
         String2FLInstructionType = new HashMap<String, FLINSTRUCTION_TYPE>();
 
         //unary aggregate operators
+        String2FLInstructionType.put( "uak+"   	, FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uark+"   , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uack+"   , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uasqk+" 	, FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarsqk+" , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uacsqk+" , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uamean"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarmean" , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uacmean" , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uavar"   , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarvar"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uacvar"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uamax"   , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarmax"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarimax",  FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uacmax"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uamin"   , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarmin"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uarimin" , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uacmin"  , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "ua+"     , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uar+"    , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uac+"    , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "ua*"     , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uatrace" , FLINSTRUCTION_TYPE.AggregateUnary);
+        String2FLInstructionType.put( "uaktrace", FLINSTRUCTION_TYPE.AggregateUnary);
+
 
         //binary aggregate operators (matrix multiplication operators)
         String2FLInstructionType.put( "tsmm" , FLINSTRUCTION_TYPE.TSMM);
@@ -72,6 +99,8 @@ public class FLInstructionParser extends InstructionParser {
 
         String[] parts = null;
         switch (fltype) {
+            case AggregateUnary:
+                return AggregateUnaryFLInstruction.parseInstruction(str);
             case Reorg:
                 return CheckpointFLInstruction.parseInstruction(str);
             case ArithmeticBinary:

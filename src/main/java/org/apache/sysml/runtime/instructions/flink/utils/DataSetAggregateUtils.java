@@ -1,16 +1,25 @@
 package org.apache.sysml.runtime.instructions.flink.utils;
 
+import org.apache.flink.api.common.functions.GroupCombineFunction;
+import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.util.Collector;
 import org.apache.sysml.lops.PartialAggregate;
 import org.apache.sysml.runtime.DMLRuntimeException;
+import org.apache.sysml.runtime.DMLUnsupportedOperationException;
 import org.apache.sysml.runtime.functionobjects.KahanPlus;
+import org.apache.sysml.runtime.instructions.flink.functions.AggregateSingleBlockFunction;
+import org.apache.sysml.runtime.instructions.spark.data.CorrMatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.matrix.data.OperationsOnMatrixValues;
 import org.apache.sysml.runtime.matrix.operators.AggregateOperator;
 import org.apache.sysml.udf.Matrix;
+
+import java.util.Iterator;
 
 public class DataSetAggregateUtils {
 
@@ -25,6 +34,62 @@ public class DataSetAggregateUtils {
         } catch (Exception e) {
             throw new DMLRuntimeException("Could not collect final block of " + input);
         }
+    }
+
+    public static MatrixBlock aggStable(DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in, AggregateOperator aop) throws DMLRuntimeException{
+        //stable aggregate of all blocks with correction block per function instance
+        DataSet<MatrixBlock> out = in.map(new MapFunction<Tuple2<MatrixIndexes,MatrixBlock>, MatrixBlock>() {
+            @Override
+            public MatrixBlock map(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
+                return value.f1;
+            }
+        }).reduce(new AggregateSingleBlockFunction(aop));
+
+        try {
+            return out.collect().get(0);
+        } catch (Exception e) {
+            throw new DMLRuntimeException("Could not collect the reduced MatrixBlock!", e);
+        }
+    }
+
+    public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> aggByKeyStable(DataSet <Tuple2<MatrixIndexes, MatrixBlock>> in, final AggregateOperator aop) {
+        //stable sum of blocks per key, by passing correction blocks along with aggregates
+
+        DataSet<Tuple2<MatrixIndexes, CorrMatrixBlock>> output = in.map(new MapFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, CorrMatrixBlock>>() {
+            @Override
+            public Tuple2<MatrixIndexes, CorrMatrixBlock> map(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
+                return new Tuple2<MatrixIndexes, CorrMatrixBlock>(value.f0, new CorrMatrixBlock(value.f1));
+            }
+        }).groupBy(0).reduce(new ReduceFunction<Tuple2<MatrixIndexes, CorrMatrixBlock>>() {
+            @Override
+            public Tuple2<MatrixIndexes, CorrMatrixBlock> reduce(Tuple2<MatrixIndexes, CorrMatrixBlock> arg0, Tuple2<MatrixIndexes, CorrMatrixBlock> arg1) throws Exception {
+                //get current block and correction
+                MatrixBlock value1 = arg0.f1.getValue();
+                MatrixBlock value2 = arg1.f1.getValue();
+                MatrixBlock corr = arg0.f1.getCorrection();
+
+                //correction block allocation on demand (but use second if exists)
+                if( corr == null && aop.correctionExists) {
+                    corr = (arg1.f1.getCorrection()!=null)?arg1.f1.getCorrection():
+                            new MatrixBlock(value1.getNumRows(), value1.getNumColumns(), false);
+                }
+
+                //aggregate other input and maintain corrections
+                //(existing value and corr are used in place)
+                if(aop.correctionExists)
+                    OperationsOnMatrixValues.incrementalAggregation(value1, corr, value2, aop, true);
+                else
+                    OperationsOnMatrixValues.incrementalAggregation(value1, null, value2, aop, true);
+                return new Tuple2<MatrixIndexes, CorrMatrixBlock>(arg0.f0, new CorrMatrixBlock(value1, corr));
+            }
+        });
+
+        return output.map(new MapFunction<Tuple2<MatrixIndexes, CorrMatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>() {
+            @Override
+            public Tuple2<MatrixIndexes, MatrixBlock> map(Tuple2<MatrixIndexes, CorrMatrixBlock> value) throws Exception {
+                return new Tuple2<MatrixIndexes, MatrixBlock>(value.f0, value.f1.getValue());
+            }
+        });
     }
 
     private static class SumSingleBlockFunction implements ReduceFunction<MatrixBlock> {
