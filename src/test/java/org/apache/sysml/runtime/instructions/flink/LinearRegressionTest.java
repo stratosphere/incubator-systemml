@@ -10,7 +10,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class LinearRegressionTest {
-    final static String scriptsPath = "/data/repos/incubator-systemml/scripts";
+    final static String scriptsPath = "/home/fschueler/Repos/incubator-systemml/scripts";
     static File   tempDir;
 
     @Rule
@@ -34,6 +34,7 @@ public class LinearRegressionTest {
                 "b=0",
                 "sparsity=0.7",
                 "output=" + tmp + "/linRegData.csv",
+                "percFile=" + tmp + "/perc.csv",
                 "format=csv",
                 "perc=0.5"
         };
@@ -130,6 +131,7 @@ public class LinearRegressionTest {
                 script,
                 "-exec",
                 "hybrid_spark",
+                //"hybrid_flink",
                 "-nvargs",
                 "X=" + tmp + "/linRegData.test.data.csv",
                 "Y=" + tmp + "/linRegData.test.labels.csv",

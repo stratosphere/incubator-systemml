@@ -425,7 +425,7 @@ public class AggUnaryOp extends Hop implements MultiThreadedHop
 		
 		checkAndSetForcedPlatform();
 		
-		ExecType REMOTE = OptimizerUtils.getRemoteExecType();
+		ExecType REMOTE = OptimizerUtils.isSparkExecutionMode() ? ExecType.SPARK : ExecType.MR;
 		
 		//forced / memory-based / threshold-based decision
 		if( _etypeForced != null ) 			
