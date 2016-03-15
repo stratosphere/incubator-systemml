@@ -1,16 +1,20 @@
 package org.apache.sysml.runtime.instructions.flink.functions;
 
-import org.apache.flink.api.common.functions.GroupCombineFunction;
-import org.apache.flink.api.common.functions.JoinFunction;
-import org.apache.flink.api.common.functions.ReduceFunction;
-import org.apache.flink.api.common.functions.RichGroupReduceFunction;
+import org.apache.flink.api.common.functions.*;
 import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.record.operators.ReduceOperator;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.sysml.lops.MapMultChain;
+import org.apache.sysml.lops.PartialAggregate;
+import org.apache.sysml.runtime.functionobjects.KahanPlus;
 import org.apache.sysml.runtime.functionobjects.Multiply;
 import org.apache.sysml.runtime.functionobjects.Plus;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
+import org.apache.sysml.runtime.matrix.data.OperationsOnMatrixValues;
 import org.apache.sysml.runtime.matrix.operators.AggregateBinaryOperator;
 import org.apache.sysml.runtime.matrix.operators.AggregateOperator;
 import org.apache.sysml.runtime.matrix.operators.BinaryOperator;
@@ -48,6 +52,84 @@ public final class MatrixMultiplicationFunctions {
     }
 
     /**
+     * Computes the matrix multiplication chain operation:
+     *
+     * <pre><code>
+     *     t(X) %*% (X %*% v)
+     * </code></pre>
+     *
+     * Where <code>v</code> is tiny and unpartitioned and broadcast to all nodes.
+     */
+    public static class MultiplyTransposedMatrixBlocks extends
+            RichMapFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>> {
+
+        private final Tuple2<MatrixIndexes, MatrixBlock> output = new Tuple2<MatrixIndexes, MatrixBlock>();
+        private final MapMultChain.ChainType type;
+        private final String vName;
+        private MatrixBlock v;
+
+        public MultiplyTransposedMatrixBlocks(MapMultChain.ChainType type, String vName) {
+            this.type = type;
+            this.vName = vName;
+            this.output.f0 = new MatrixIndexes(1, 1);
+        }
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            v = getRuntimeContext().<Tuple2<?, MatrixBlock>>getBroadcastVariable(vName).get(0).f1;
+        }
+
+        @Override
+        public Tuple2<MatrixIndexes, MatrixBlock> map(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
+            assert value.f1.getNumColumns() == v.getNumRows() : "Indices do not match";
+            output.f1 = value.f1.chainMatrixMultOperations(v, null, output.f1, type);
+            return output;
+        }
+    }
+
+    /**
+     * Computes the matrix multiplication chain operations:
+     *
+     * <pre><code>
+     *     t(X) %*% (w * (X %*% v))
+     * </code></pre>
+     * <pre><code>
+     *     t(X) %*% ((X %*% v) - w)
+     * </code></pre>
+     *
+     * Where <code>v</code> is tiny and unpartitioned and broadcast to all nodes, and <code>w</code> has the same
+     * partitioning as <code>X</code>.
+     */
+    public static class MultiplyTransposedMatrixBlocksWithVector extends RichJoinFunction<
+            Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>,
+            Tuple2<MatrixIndexes, MatrixBlock>> {
+
+        private final Tuple2<MatrixIndexes, MatrixBlock> output = new Tuple2<MatrixIndexes, MatrixBlock>();
+        private final MapMultChain.ChainType type;
+        private final String vName;
+        private MatrixBlock v;
+
+        public MultiplyTransposedMatrixBlocksWithVector(MapMultChain.ChainType type, String vName) {
+            this.type = type;
+            this.vName = vName;
+            this.output.f0 = new MatrixIndexes(1, 1);
+        }
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            v = getRuntimeContext().<Tuple2<?, MatrixBlock>>getBroadcastVariable(vName).get(0).f1;
+        }
+
+        @Override
+        public Tuple2<MatrixIndexes, MatrixBlock> join(Tuple2<MatrixIndexes, MatrixBlock> x,
+                                                       Tuple2<MatrixIndexes, MatrixBlock> w) throws Exception {
+            assert x.f1.getNumColumns() == v.getNumRows() : "Indices do not match";
+            output.f1 = x.f1.chainMatrixMultOperations(v, w.f1, output.f1, type);
+            return output;
+        }
+    }
+
+    /**
      * Reduce function that sums two matrix blocks <code>C[i,j]</code> and <code>C[m,n]</code>, assuming they have the
      * same index <code>i == m && j == n</code> and the block have the same dimensions
      * <code>nrow(A) == nrow(B) && ncol(A) == ncol(B)</code>.
@@ -60,10 +142,52 @@ public final class MatrixMultiplicationFunctions {
         @Override
         public Tuple2<MatrixIndexes, MatrixBlock> reduce(Tuple2<MatrixIndexes, MatrixBlock> left,
                                                          Tuple2<MatrixIndexes, MatrixBlock> right) throws Exception {
-            assert left.f0 == right.f0 : "Indices do not match";
+            assert left.f0.equals(right.f0) : "Indices do not match";
             output.f0 = left.f0;
             output.f1 = new MatrixBlock();
             left.f1.binaryOperations(plus, right.f1, output.f1);
+            return output;
+        }
+    }
+
+    /**
+     * This aggregate function uses kahan+ with corrections to aggregate input blocks; it is meant for
+     * reduce all operations where we can reuse the same correction block independent of the input
+     * block indexes. Note that this aggregation function does not apply to embedded corrections.
+     */
+    @ReduceOperator.Combinable
+    public static class SumMatrixBlocksStable implements ReduceFunction<Tuple2<MatrixIndexes, MatrixBlock>> {
+        private static final long serialVersionUID = 1737038715965862222L;
+
+        private final Tuple2<MatrixIndexes, MatrixBlock> output = new Tuple2<MatrixIndexes, MatrixBlock>();
+
+        private AggregateOperator _op = null;
+        private MatrixBlock _corr = null;
+
+        public SumMatrixBlocksStable()
+        {
+            _op = new AggregateOperator(0, KahanPlus.getKahanPlusFnObject(), true, PartialAggregate.CorrectionLocationType.NONE);
+            _corr = null;
+            output.f0 = new MatrixIndexes(1, 1);
+        }
+
+        @Override
+        public Tuple2<MatrixIndexes, MatrixBlock> reduce(Tuple2<MatrixIndexes, MatrixBlock> value1, Tuple2<MatrixIndexes, MatrixBlock> value2)
+                throws Exception {
+            MatrixBlock blk1 = value1.f1;
+            MatrixBlock blk2 = value2.f1;
+
+            //create correction block (on demand)
+            if( _corr == null ){
+                _corr = new MatrixBlock(blk1.getNumRows(), blk1.getNumColumns(), false);
+            }
+
+            //copy one input to output
+            output.f1 = new MatrixBlock(blk1);
+
+            //aggregate other input
+            OperationsOnMatrixValues.incrementalAggregation(output.f1, _corr, blk2, _op, false);
+
             return output;
         }
     }
