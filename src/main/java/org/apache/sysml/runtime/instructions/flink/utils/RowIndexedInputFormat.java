@@ -8,6 +8,8 @@ import org.apache.flink.core.fs.Path;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RowIndexedInputFormat extends DelimitedInputFormat<Tuple2<Integer, String>> {
 
@@ -15,10 +17,7 @@ public class RowIndexedInputFormat extends DelimitedInputFormat<Tuple2<Integer, 
     private static final long serialVersionUID = 1L;
     private String charsetName = "UTF-8";
 
-    private int splitNumber;
-
     public void open(FileInputSplit split) throws IOException {
-        this.splitNumber = split.getSplitNumber();
         super.open(split);
     }
 
@@ -26,11 +25,8 @@ public class RowIndexedInputFormat extends DelimitedInputFormat<Tuple2<Integer, 
         if(this.getDelimiter() != null && this.getDelimiter().length == 1 && this.getDelimiter()[0] == 10 && offset + numBytes >= 1 && bytes[offset + numBytes - 1] == 13) {
             --numBytes;
         }
-
-        return new Tuple2<Integer, String>(splitNumber, new String(bytes, offset, numBytes, this.charsetName));
+        return new Tuple2<Integer, String>(this.currentSplit.getSplitNumber(), new String(bytes, offset, numBytes, this.charsetName));
     }
-
-
     public String getCharsetName() {
         return this.charsetName;
     }
