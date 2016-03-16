@@ -97,7 +97,7 @@ public class MapmmChainFLInstruction extends FLInstruction {
         if (chainType == MapMultChain.ChainType.XtXv) {
             out = X.map(new MultiplyTransposedMatrixBlocks(chainType, "v"))
                     .withBroadcastSet(v, "v")
-                    .reduce(new SumMatrixBlocks());
+                    .reduce(new SumMatrixBlocksStable());
         }
 
         // XtwXv or XtXvy
