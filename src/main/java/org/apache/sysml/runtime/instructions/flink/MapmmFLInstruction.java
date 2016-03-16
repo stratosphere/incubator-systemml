@@ -19,7 +19,7 @@ import static org.apache.sysml.runtime.instructions.flink.functions.MatrixMultip
 public class MapmmFLInstruction extends BinaryFLInstruction {
 
     public MapmmFLInstruction(CPOperand input1, CPOperand input2, CPOperand output, String opcode, String istr) {
-        super(input1, input2, output, opcode, istr);
+        super(null, input1, input2, output, opcode, istr);
     }
 
     /**
