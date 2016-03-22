@@ -26,16 +26,16 @@ public class MatrixMatrixArithmeticFLInstructionTest {
 
         // create variable with path to the csv
         VariableCPInstruction pREADm = VariableCPInstruction.parseInstruction(
-                "CP°createvar°pREADm°" + inputFile + "°false°csv°306°4°-1°-1°-1°false°,°true°0.0");
+                "CP°createvar°pREADm°" + inputFile + "°false°csv°306°4°-1°-1°-1°false°false°,°true°0.0");
         // create variable Var1
         VariableCPInstruction _mVar1 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar1°scratch_space//_p80815_141.23.124.66//_t0/temp1°true°binarycell°306°4°-1°-1°-1");
+                "CP°createvar°_mVar1°scratch_space//_p80815_141.23.124.66//_t0/temp1°true°binarycell°306°4°-1°-1°-1°false");
 
         // reblock - read file into Var1 DataSet<Tuple2<MatrixIndexes, MatrixBlock>>
         ReblockFLInstruction rblk = ReblockFLInstruction.parseInstruction(
                 "FLINK°rblk°pREADm·MATRIX·DOUBLE°_mVar1·MATRIX·DOUBLE°1000°1000°true");
         VariableCPInstruction createvar2 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar2°scratch_space//_p80815_141.23.124.66//_t0/temp2°true°binaryblock°306°4°1000°1000°-1");
+                "CP°createvar°_mVar2°scratch_space//_p80815_141.23.124.66//_t0/temp2°true°binaryblock°306°4°1000°1000°-1°false");
         CheckpointFLInstruction chkpnt = CheckpointFLInstruction.parseInstruction(
                 "FLINK°chkpoint°_mVar1·MATRIX·DOUBLE°_mVar2·MATRIX·DOUBLE°MEMORY_AND_DISK");
         VariableCPInstruction rmVar1 = VariableCPInstruction.parseInstruction(
@@ -43,7 +43,7 @@ public class MatrixMatrixArithmeticFLInstructionTest {
 
         // create output variable Var3
         VariableCPInstruction createvar3 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1");
+                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1°false");
 
         // multiply with scalar and write result to Var3
         // this is the instruction under test!

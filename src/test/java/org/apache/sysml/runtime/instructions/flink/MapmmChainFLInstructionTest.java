@@ -43,11 +43,11 @@ public class MapmmChainFLInstructionTest {
         FlinkExecutionContext fec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
 
         VariableCPInstruction createvarX = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mX°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1");
+                "CP°createvar°_mX°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1°false");
         VariableCPInstruction createvarV = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mv°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1");
+                "CP°createvar°_mv°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1°false");
         VariableCPInstruction createvar3 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1");
+                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1°false");
         MapmmChainFLInstruction mapmmChain = new MapmmChainFLInstruction(
                 new CPOperand("_mX", Expression.ValueType.DOUBLE, Expression.DataType.MATRIX),
                 new CPOperand("_mv", Expression.ValueType.DOUBLE, Expression.DataType.MATRIX),
@@ -104,13 +104,13 @@ public class MapmmChainFLInstructionTest {
         FlinkExecutionContext fec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
 
         VariableCPInstruction createvarX = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mX°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1");
+                "CP°createvar°_mX°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1°false");
         VariableCPInstruction createvarW = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mv°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1");
+                "CP°createvar°_mv°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1°false");
         VariableCPInstruction createvarV = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mw°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°1°1000°1000°-1");
+                "CP°createvar°_mw°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°1°1000°1000°-1°false");
         VariableCPInstruction createvar3 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1");
+                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1°false");
         MapmmChainFLInstruction mapmmChain = new MapmmChainFLInstruction(
                 new CPOperand("_mX", Expression.ValueType.DOUBLE, Expression.DataType.MATRIX),
                 new CPOperand("_mv", Expression.ValueType.DOUBLE, Expression.DataType.MATRIX),
@@ -175,13 +175,13 @@ public class MapmmChainFLInstructionTest {
         FlinkExecutionContext fec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
 
         VariableCPInstruction createvarX = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mX°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1");
+                "CP°createvar°_mX°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°4°1000°1000°-1°false");
         VariableCPInstruction createvarW = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mv°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1");
+                "CP°createvar°_mv°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1°false");
         VariableCPInstruction createvarV = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mw°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°1°1000°1000°-1");
+                "CP°createvar°_mw°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°306°1°1000°1000°-1°false");
         VariableCPInstruction createvar3 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1");
+                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°4°1°1000°1000°-1°false");
         MapmmChainFLInstruction mapmmChain = new MapmmChainFLInstruction(
                 new CPOperand("_mX", Expression.ValueType.DOUBLE, Expression.DataType.MATRIX),
                 new CPOperand("_mv", Expression.ValueType.DOUBLE, Expression.DataType.MATRIX),

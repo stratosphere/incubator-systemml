@@ -45,11 +45,11 @@ public class MapmmFLInstructionTest {
         FlinkExecutionContext fec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
 
         VariableCPInstruction createvarA = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mA°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°3°2°1000°1000°-1");
+                "CP°createvar°_mA°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°3°2°1000°1000°-1°false");
         VariableCPInstruction createvarB = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mB°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°2°3°1000°1000°-1");
+                "CP°createvar°_mB°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°2°3°1000°1000°-1°false");
         VariableCPInstruction createvar3 = VariableCPInstruction.parseInstruction(
-                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°3°3°1000°1000°-1");
+                "CP°createvar°_mVar3°scratch_space//_p80815_141.23.124.66//_t0/temp3°true°binaryblock°3°3°1000°1000°-1°false");
         AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
         AggregateBinaryOperator aggbin = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
         MapmmFLInstruction mapMM = new MapmmFLInstruction(

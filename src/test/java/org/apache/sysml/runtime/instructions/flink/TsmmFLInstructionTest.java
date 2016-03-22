@@ -5,6 +5,7 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mesos.Protos;
+import org.apache.sysml.api.DMLScript;
 import org.apache.sysml.api.FlinkMLOutput;
 import org.apache.sysml.api.MLContext;
 import org.apache.sysml.api.MLOutput;
@@ -47,17 +48,19 @@ public class TsmmFLInstructionTest {
         String testFile = getClass().getClassLoader().getResource("flink/haberman.data").getFile();
         String outputPath = "/tmp/sysml/output/tsmm_out.csv";
 
+        DMLScript.rtplatform = DMLScript.RUNTIME_PLATFORM.FLINK;
+
         // get execution context
         FlinkExecutionContext flec = (FlinkExecutionContext) ExecutionContextFactory.createContext();
 
         //execute variable isntructions to set up scratch space
-        VariableCPInstruction readVar1   = VariableCPInstruction.parseInstruction(   "CP°createvar°pREADm°" + testFile + "°false°csv°306°4°-1°-1°-1°false°,°true°0.0");
-        VariableCPInstruction createVar1 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar1°scratch_space//_p22279_127.0.1.1//_t0/temp1°true°binaryblock°306°4°1000°1000°-1");
+        VariableCPInstruction readVar1   = VariableCPInstruction.parseInstruction(   "CP°createvar°pREADm°" + testFile + "°false°csv°306°4°-1°-1°-1°false°false°,°true°0.0");
+        VariableCPInstruction createVar1 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar1°scratch_space//_p22279_127.0.1.1//_t0/temp1°true°binaryblock°306°4°1000°1000°-1°false");
         ReblockFLInstruction  reblock    = ReblockFLInstruction.parseInstruction(    "FLINK°rblk°pREADm·MATRIX·DOUBLE°_mVar1·MATRIX·DOUBLE°1000°1000°true");
-        VariableCPInstruction createvar2 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar2°scratch_space//_p22279_127.0.1.1//_t0/temp2°true°binaryblock°306°4°1000°1000°-1");
+        VariableCPInstruction createvar2 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar2°scratch_space//_p22279_127.0.1.1//_t0/temp2°true°binaryblock°306°4°1000°1000°-1°false");
         CheckpointFLInstruction chkpnt   = CheckpointFLInstruction.parseInstruction( "FLINK°chkpoint°_mVar1·MATRIX·DOUBLE°_mVar2·MATRIX·DOUBLE°MEMORY_AND_DISK");
         VariableCPInstruction rmVar1     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar1");
-        VariableCPInstruction createVar3 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar3°scratch_space//_p22279_127.0.1.1//_t0/temp3°true°binaryblock°4°4°1000°1000°-1");
+        VariableCPInstruction createVar3 = VariableCPInstruction.parseInstruction(   "CP°createvar°_mVar3°scratch_space//_p22279_127.0.1.1//_t0/temp3°true°binaryblock°4°4°1000°1000°-1°false");
         TsmmFLInstruction     inst       = TsmmFLInstruction.parseInstruction(       "FLINK°tsmm°_mVar2·MATRIX·DOUBLE°_mVar3·MATRIX·DOUBLE°LEFT");
         VariableCPInstruction rmVar2     = VariableCPInstruction.parseInstruction(   "CP°rmvar°_mVar2");
         WriteFLInstruction    wrVar3     = WriteFLInstruction.parseInstruction(      "FLINK°write°_mVar3·MATRIX·DOUBLE°" + outputPath + "·SCALAR·STRING·true°csv·SCALAR·STRING·true°false°,°false°true");
