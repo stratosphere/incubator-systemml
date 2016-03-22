@@ -2,11 +2,9 @@ package org.apache.sysml.runtime.instructions.flink.functions;
 
 import org.apache.flink.api.common.functions.*;
 import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.api.java.record.operators.ReduceOperator;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.sysml.lops.MapMultChain;
 import org.apache.sysml.lops.PartialAggregate;
 import org.apache.sysml.runtime.functionobjects.KahanPlus;
@@ -134,7 +132,6 @@ public final class MatrixMultiplicationFunctions {
      * same index <code>i == m && j == n</code> and the block have the same dimensions
      * <code>nrow(A) == nrow(B) && ncol(A) == ncol(B)</code>.
      */
-    @RichGroupReduceFunction.Combinable
     public static class SumMatrixBlocks implements ReduceFunction<Tuple2<MatrixIndexes, MatrixBlock>> {
         private final Tuple2<MatrixIndexes, MatrixBlock> output = new Tuple2<MatrixIndexes, MatrixBlock>();
         private final BinaryOperator plus = new BinaryOperator(Plus.getPlusFnObject());
@@ -155,7 +152,6 @@ public final class MatrixMultiplicationFunctions {
      * reduce all operations where we can reuse the same correction block independent of the input
      * block indexes. Note that this aggregation function does not apply to embedded corrections.
      */
-    @ReduceOperator.Combinable
     public static class SumMatrixBlocksStable implements ReduceFunction<Tuple2<MatrixIndexes, MatrixBlock>> {
         private static final long serialVersionUID = 1737038715965862222L;
 
