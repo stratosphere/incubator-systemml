@@ -304,7 +304,7 @@ public abstract class Hop
 		if( DMLScript.rtplatform != RUNTIME_PLATFORM.SINGLE_NODE 
 			&& !(getDataType()==DataType.SCALAR) )
 		{
-			et = OptimizerUtils.isSparkExecutionMode() ? ExecType.SPARK : ExecType.MR;
+			et = OptimizerUtils.getRemoteExecType();
 		}
 
 		//add reblock lop to output if required
