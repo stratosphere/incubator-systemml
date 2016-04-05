@@ -28,6 +28,7 @@ import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.DMLScriptException;
 import org.apache.sysml.runtime.DMLUnsupportedOperationException;
 import org.apache.sysml.runtime.controlprogram.context.ExecutionContext;
+import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 
 
 public class Program 
@@ -144,6 +145,9 @@ public class Program
 			for (int i=0 ; i<_programBlocks.size() ; i++) {
 				ec.updateDebugState(i);
 				_programBlocks.get(i).execute(ec);
+			}
+			if (ec instanceof FlinkExecutionContext) {
+				((FlinkExecutionContext) ec).getFlinkContext().execute();
 			}
 		}
 		catch(DMLScriptException e) {

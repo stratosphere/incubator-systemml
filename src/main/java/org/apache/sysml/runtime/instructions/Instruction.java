@@ -219,8 +219,8 @@ public abstract class Instruction
 	 * @throws DMLRuntimeException
 	 * @throws DMLUnsupportedOperationException
 	 */
-	public abstract void processInstruction(ExecutionContext ec) 
-		throws DMLRuntimeException, DMLUnsupportedOperationException;
+	public abstract void processInstruction(ExecutionContext ec)
+			throws Exception;
 	
 	/**
 	 * This method should be used for any tear down after executing this instruction.

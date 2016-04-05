@@ -97,7 +97,7 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
         fec.addLineageDataSet(output.getName(), dataSetVar2);
     }
 
-    protected void processMatrixScalarBinaryInstruction(ExecutionContext ec) throws DMLRuntimeException, DMLUnsupportedOperationException {
+    protected void processMatrixScalarBinaryInstruction(ExecutionContext ec) throws Exception {
         FlinkExecutionContext fec = (FlinkExecutionContext) ec;
 
         // get variable names
