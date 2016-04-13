@@ -26,6 +26,7 @@ import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.sysml.parser.Expression.DataType;
 import org.apache.sysml.parser.Expression.ValueType;
 import org.apache.sysml.runtime.DMLRuntimeException;
+import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
 import org.apache.sysml.runtime.instructions.spark.data.RDDObject;
 import org.apache.sysml.runtime.io.FrameReader;
 import org.apache.sysml.runtime.io.FrameReaderFactory;
@@ -146,6 +147,14 @@ public class FrameObject extends CacheableData<FrameBlock>
 	}
 
 	@Override
+	protected FrameBlock readBlobFromDataSet(DataSetObject dso, MutableBoolean status)
+			throws IOException
+	{
+		//TODO support for distributed frame representations
+		throw new IOException("Not implemented yet.");
+	}
+
+	@Override
 	protected void writeBlobToHDFS(String fname, String ofmt, int rep, FileFormatProperties fprop) 
 		throws IOException, DMLRuntimeException 
 	{
@@ -157,6 +166,14 @@ public class FrameObject extends CacheableData<FrameBlock>
 	@Override
 	protected void writeBlobFromRDDtoHDFS(RDDObject rdd, String fname, String ofmt) 
 		throws IOException, DMLRuntimeException 
+	{
+		//TODO support for distributed frame representations
+		throw new IOException("Not implemented yet.");
+	}
+
+	@Override
+	protected void writeBlobFromDataSetToHDFS(DataSetObject dso, String fname, String ofmt)
+			throws IOException, DMLRuntimeException
 	{
 		//TODO support for distributed frame representations
 		throw new IOException("Not implemented yet.");

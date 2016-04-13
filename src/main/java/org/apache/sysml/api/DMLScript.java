@@ -92,7 +92,9 @@ public class DMLScript
 		SINGLE_NODE,    // execute all matrix operations in CP
 		HYBRID,         // execute matrix operations in CP or MR
 		HYBRID_SPARK,   // execute matrix operations in CP or Spark   
-		SPARK			// execute matrix operations in Spark
+		SPARK,			// execute matrix operations in Spark
+		FLINK,
+		HYBRID_FLINK
 	}
 	
 	public static RUNTIME_PLATFORM rtplatform = RUNTIME_PLATFORM.HYBRID; //default exec mode
@@ -519,6 +521,10 @@ public class DMLScript
 			lrtplatform = RUNTIME_PLATFORM.SPARK;
 		else if ( platform.equalsIgnoreCase("hybrid_spark"))
 			lrtplatform = RUNTIME_PLATFORM.HYBRID_SPARK;
+        else if ( platform.equalsIgnoreCase("flink"))
+            lrtplatform = RUNTIME_PLATFORM.FLINK;
+		else if ( platform.equalsIgnoreCase("hybrid_flink"))
+			lrtplatform = RUNTIME_PLATFORM.HYBRID_FLINK;
 		else 
 			System.err.println("ERROR: Unknown runtime platform: " + platform);
 		
