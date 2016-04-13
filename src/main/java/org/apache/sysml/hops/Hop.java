@@ -199,6 +199,8 @@ public abstract class Hop
 			_etypeForced = ExecType.MR;
 		else if ( DMLScript.rtplatform == RUNTIME_PLATFORM.SPARK )
 			_etypeForced = ExecType.SPARK;
+		else if ( DMLScript.rtplatform == RUNTIME_PLATFORM.FLINK )
+			_etypeForced = ExecType.FLINK;
 	}
 	
 	/**
@@ -229,6 +231,8 @@ public abstract class Hop
 					_etype = ExecType.MR;
 				else if( DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_SPARK )
 					_etype = ExecType.SPARK;
+				else if( DMLScript.rtplatform == RUNTIME_PLATFORM.HYBRID_FLINK)
+					_etype = ExecType.FLINK;
 			}
 		}
 	}
@@ -300,7 +304,7 @@ public abstract class Hop
 		if( DMLScript.rtplatform != RUNTIME_PLATFORM.SINGLE_NODE 
 			&& !(getDataType()==DataType.SCALAR) )
 		{
-			et = OptimizerUtils.isSparkExecutionMode() ? ExecType.SPARK : ExecType.MR;
+			et = OptimizerUtils.getRemoteExecType();
 		}
 
 		//add reblock lop to output if required
@@ -785,6 +789,8 @@ public abstract class Hop
 				et = ExecType.MR;
 			else if( DMLScript.rtplatform == DMLScript.RUNTIME_PLATFORM.HYBRID_SPARK )
 				et = ExecType.SPARK;
+			else if( DMLScript.rtplatform == DMLScript.RUNTIME_PLATFORM.HYBRID_FLINK )
+				et = ExecType.FLINK;
 			
 			c = '*';
 		}
