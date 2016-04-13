@@ -407,7 +407,7 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 	{	
 		checkAndSetForcedPlatform();
 
-		ExecType REMOTE = OptimizerUtils.isSparkExecutionMode() ? ExecType.SPARK : ExecType.MR;
+		ExecType REMOTE = OptimizerUtils.getRemoteExecType();
 		
 		if( _etypeForced != null ) 			
 		{
