@@ -825,7 +825,7 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 		if( chain == ChainType.XtXv ) {
 			Hop hX = getInput().get(0).getInput().get(0);
 			Hop hv = getInput().get(1).getInput().get(1);
-			mapmmchain = new MapMultChain( hX.constructLops(), hv.constructLops(), getDataType(), getValueType(), ExecType.SPARK);
+			mapmmchain = new MapMultChain( hX.constructLops(), hv.constructLops(), getDataType(), getValueType(), ExecType.FLINK);
 		}
 		else { //ChainType.XtwXv / ChainType.XtXvy
 			int wix = (chain == ChainType.XtwXv) ? 0 : 1;
