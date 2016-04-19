@@ -77,6 +77,7 @@ public abstract class LinearRegressionTest extends AutomatedTestBase {
 			proArgs.add("-python");
 		}
 		proArgs.add("-stats");
+		proArgs.add("-explain");
 		proArgs.add("-args");
 		proArgs.add(input("v"));
 		proArgs.add(input("y"));

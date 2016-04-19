@@ -1543,9 +1543,10 @@ public class BinaryOp extends Hop
 			||(m1_dim1 >= 1 && m2_dim1 == 1 )) ) //rhs row vector
 		{
 			double size = OptimizerUtils.estimateSize(m2_dim1, m2_dim2);
-			if( OptimizerUtils.checkSparkBroadcastMemoryBudget(size) ) {
+			/*
+			if( OptimizerUtils.checkSparkBroadcastMemoryBudget(size) ) { //TODO: check this
 				return MMBinaryMethod.MR_BINARY_M;
-			}
+			}*/
 		}
 
 		//MR_BINARY_R as robust fallback strategy

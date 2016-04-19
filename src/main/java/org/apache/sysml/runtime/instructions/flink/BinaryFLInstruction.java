@@ -65,6 +65,9 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
     protected static String parseBinaryInstruction(String instr, CPOperand in1, CPOperand in2, CPOperand out)
             throws DMLRuntimeException {
         String[] parts = InstructionUtils.getInstructionPartsWithValueType(instr);
+
+		System.out.println(parts[0]);
+		
         InstructionUtils.checkNumFields(parts, 3);
 
         String opcode = parts[0];
@@ -200,6 +203,31 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
                     + "[" + mc1.getRowsPerBlock() + "x" + mc1.getColsPerBlock() + " vs " + mc2.getRowsPerBlock() + "x" + mc2.getColsPerBlock() + "]");
         }
     }
+
+
+	/**
+	 *
+	 * @param flec
+	 * @throws DMLRuntimeException
+	 */
+	protected void updateBinaryMMOutputMatrixCharacteristics(FlinkExecutionContext flec, boolean checkCommonDim)
+		throws DMLRuntimeException
+	{
+		MatrixCharacteristics mc1 = flec.getMatrixCharacteristics(input1.getName());
+		MatrixCharacteristics mc2 = flec.getMatrixCharacteristics(input2.getName());
+		MatrixCharacteristics mcOut = flec.getMatrixCharacteristics(output.getName());
+		if(!mcOut.dimsKnown()) {
+			if( !mc1.dimsKnown() || !mc2.dimsKnown() )
+				throw new DMLRuntimeException("The output dimensions are not specified and cannot be inferred from inputs.");
+			else if(mc1.getRowsPerBlock() != mc2.getRowsPerBlock() || mc1.getColsPerBlock() != mc2.getColsPerBlock())
+				throw new DMLRuntimeException("Incompatible block sizes for BinarySPInstruction.");
+			else if(checkCommonDim && mc1.getCols() != mc2.getRows())
+				throw new DMLRuntimeException("Incompatible dimensions for BinarySPInstruction");
+			else {
+				mcOut.set(mc1.getRows(), mc2.getCols(), mc1.getRowsPerBlock(), mc1.getColsPerBlock());
+			}
+		}
+	}
 
     /**
      * @param mc1

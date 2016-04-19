@@ -163,7 +163,7 @@ public abstract class AutomatedTestBase
 	 * Also set DMLScript.USE_LOCAL_SPARK_CONFIG to true for running the test 
 	 * suite in spark mode
 	 */
-	protected static RUNTIME_PLATFORM rtplatform = RUNTIME_PLATFORM.HYBRID;
+	protected static RUNTIME_PLATFORM rtplatform = RUNTIME_PLATFORM.FLINK;
 	
 	protected static final boolean DEBUG = false;
 	protected static final boolean VISUALIZE = false;

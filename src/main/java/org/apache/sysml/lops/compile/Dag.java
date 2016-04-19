@@ -1256,7 +1256,7 @@ public class Dag<N extends Lop>
 		//for(Instruction inst : deleteInst) {
 		for(int i=0; i < deleteInst.size(); i++) {
 			Instruction inst = deleteInst.get(i);
-			if ((inst.getType() == INSTRUCTION_TYPE.CONTROL_PROGRAM  || inst.getType() == INSTRUCTION_TYPE.SPARK)
+			if ((inst.getType() == INSTRUCTION_TYPE.CONTROL_PROGRAM  || inst.getType() == INSTRUCTION_TYPE.SPARK || inst.getType() == INSTRUCTION_TYPE.FLINK)
 					&& ((CPInstruction)inst).getCPInstructionType() == CPINSTRUCTION_TYPE.Variable 
 					&& ((VariableCPInstruction)inst).isRemoveVariable(varName) ) {
 				deleteInst.remove(i);
