@@ -200,6 +200,9 @@ public final class MatrixMultiplicationFunctions {
                 _corr = new MatrixBlock(blk1.getNumRows(), blk1.getNumColumns(), false);
             }
 
+            // forward martix indexes as is
+            output.f0 = value1.f0;
+
             //copy one input to output
             output.f1 = new MatrixBlock(blk1);
 
