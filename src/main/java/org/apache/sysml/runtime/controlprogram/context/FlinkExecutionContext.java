@@ -439,6 +439,16 @@ public class FlinkExecutionContext extends ExecutionContext {
 		return membudget;
 	}
 
+    public void execute() {
+        // FIXME track number of sinks
+        // HACK ALERT !!!
+        try {
+            _execEnv.execute();
+        } catch (Exception e) {
+            System.out.println("Find a better solution");
+        }
+    }
+
 
 	/**
 	 *
