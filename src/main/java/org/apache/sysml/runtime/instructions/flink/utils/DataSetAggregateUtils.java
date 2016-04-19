@@ -50,56 +50,6 @@ public class DataSetAggregateUtils {
         }
     }
 
-	/**
-	 *
-	 * @param in
-	 * @return
-	 */
-	public static MatrixBlock sumStable1( DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in ) {
-		try {
-			return (MatrixBlock) in.map(new DataSetConverterUtils.ExtractElement(1)).returns(MatrixBlock.class).reduce(
-					new SumSingleBlockFunction() ).collect().get(0);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		return null;
-	}
-
-	/**
-	 *
-	 */
-	private static class ExtractMatrixBlock implements MapFunction<Tuple2<MatrixIndexes, CorrMatrixBlock>, MatrixBlock >
-	{
-		@Override
-		public MatrixBlock map(Tuple2<MatrixIndexes, CorrMatrixBlock> arg0)
-			throws Exception
-		{
-			return arg0.f1.getValue();
-		}
-	}
-
-	/**
-	 *
-	 * @param in
-	 * @return
-	 */
-	public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> sumByKeyStable( DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in )
-	{
-		//stable sum of blocks per key, by passing correction blocks along with aggregates 		
-		DataSet<Tuple2<MatrixIndexes, CorrMatrixBlock>> tmp =
-			in.groupBy(0). new CreateBlockCombinerFunction(),
-				new MergeSumBlockValueFunction(),
-				new MergeSumBlockCombinerFunction() );
-
-		//strip-off correction blocks from 					     
-		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out =
-			tmp.map( new ExtractMatrixBlock() );
-
-		//return the aggregate rdd
-		return out;
-	}
-
     public static MatrixBlock aggStable(DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in,
                                         AggregateOperator aop) throws DMLRuntimeException {
         //stable aggregate of all blocks with correction block per function instance
