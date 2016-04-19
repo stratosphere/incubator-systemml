@@ -84,7 +84,7 @@ public class CpmmFLInstruction extends BinarySPInstruction {
                 .with(new MatrixMultiplicationFunctions.MultiplyMatrixBlocks())
                 .groupBy(new MatrixMultiplicationFunctions.MatrixIndexesSelector())
                 .combineGroup(new MatrixMultiplicationFunctions.SumMatrixBlocksCombine())
-                .reduce(new MatrixMultiplicationFunctions.SumMatrixBlocks());
+                .reduce(new MatrixMultiplicationFunctions.SumMatrixBlocksStable());
 
         // register variable for output
         fec.setDataSetHandleForVariable(output.getName(), out);
