@@ -27,6 +27,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.sysml.api.DMLScript;
+import org.apache.sysml.hops.OptimizerUtils;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.Program;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
@@ -43,6 +44,19 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class FlinkExecutionContext extends ExecutionContext {
+
+	//internal configurations 
+	private static boolean LAZY_SPARKCTX_CREATION = true;
+	private static boolean ASYNCHRONOUS_VAR_DESTROY = true;
+	private static boolean FAIR_SCHEDULER_MODE = true;
+
+	//executor memory and relative fractions as obtained from the spark configuration
+	private static long _memExecutors = -1; //mem per executors
+	private static double _memRatioData = -1;
+	private static double _memRatioShuffle = -1;
+	private static int _numExecutors = -1; //total executors
+	private static int _defaultPar = -1; //total vcores  
+	private static boolean _confOnly = false; //infrastructure info based on config
 
     private static final Log LOG = LogFactory.getLog(FlinkExecutionContext.class.getName());
 
@@ -400,5 +414,75 @@ public class FlinkExecutionContext extends ExecutionContext {
         return out;
     }
 
+
+	/**
+	 * Returns the available memory budget for broadcast variables in bytes.
+	 * In detail, this takes into account the total executor memory as well
+	 * as relative ratios for data and shuffle. Note, that this is a conservative
+	 * estimate since both data memory and shuffle memory might not be fully
+	 * utilized. 
+	 *
+	 * @return
+	 */
+	public static double getBroadcastMemoryBudget()
+	{
+		/*
+		if( _memExecutors < 0 || _memRatioData < 0 || _memRatioShuffle < 0 )
+			analyzeSparkConfiguation();
+			*/
+
+		//70% of remaining free memory
+		double membudget = OptimizerUtils.MEM_UTIL_FACTOR *
+			(  _memExecutors
+				- _memExecutors*(_memRatioData+_memRatioShuffle) );
+
+		return membudget;
+	}
+
+
+	/**
+	 *
+	 */
+	/*
+	public static void analyzeSparkConfiguation()
+	{
+		SparkConf sconf = new SparkConf();
+
+		//parse absolute executor memory
+		String tmp = sconf.get("spark.executor.memory", "512m");
+		if ( tmp.endsWith("g") || tmp.endsWith("G") )
+			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-1)) * 1024 * 1024 * 1024;
+		else if ( tmp.endsWith("m") || tmp.endsWith("M") )
+			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-1)) * 1024 * 1024;
+		else if( tmp.endsWith("k") || tmp.endsWith("K") )
+			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-1)) * 1024;
+		else
+			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-2));
+
+		//get data and shuffle memory ratios (defaults not specified in job conf)
+		_memRatioData = sconf.getDouble("spark.storage.memoryFraction", 0.6); //default 60%
+		_memRatioShuffle = sconf.getDouble("spark.shuffle.memoryFraction", 0.2); //default 20%
+
+		int numExecutors = sconf.getInt("spark.executor.instances", -1);
+		int numCoresPerExec = sconf.getInt("spark.executor.cores", -1);
+		int defaultPar = sconf.getInt("spark.default.parallelism", -1);
+
+		if( numExecutors > 1 && (defaultPar > 1 || numCoresPerExec > 1) ) {
+			_numExecutors = numExecutors;
+			_defaultPar = (defaultPar>1) ? defaultPar : numExecutors * numCoresPerExec;
+			_confOnly = true;
+		}
+		else {
+			//get default parallelism (total number of executors and cores)
+			//note: spark context provides this information while conf does not
+			//(for num executors we need to correct for driver and local mode)
+			JavaSparkContext jsc = getSparkContextStatic();
+			_numExecutors = Math.max(jsc.sc().getExecutorMemoryStatus().size() - 1, 1);
+			_defaultPar = jsc.defaultParallelism();
+			_confOnly = false; //implies env info refresh w/ spark context 
+		}
+
+		//note: required time for infrastructure analysis on 5 node cluster: ~5-20ms. 
+	}*/
 
 }

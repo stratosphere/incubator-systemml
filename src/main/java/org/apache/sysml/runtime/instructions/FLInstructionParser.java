@@ -79,6 +79,12 @@ public class FLInstructionParser extends InstructionParser {
 
         String2FLInstructionType.put("write", FLINSTRUCTION_TYPE.Write);
 
+		// Reorg Instruction Opcodes (repositioning of existing values)
+		String2FLInstructionType.put( "r'"   	   , FLINSTRUCTION_TYPE.Reorg);
+		String2FLInstructionType.put( "rev"   	   , FLINSTRUCTION_TYPE.Reorg);
+		String2FLInstructionType.put( "rdiag"      , FLINSTRUCTION_TYPE.Reorg);
+		String2FLInstructionType.put( "rsort"      , FLINSTRUCTION_TYPE.Reorg);
+
         // ArithmeticBinary
         String2FLInstructionType.put("+", FLINSTRUCTION_TYPE.ArithmeticBinary);
         String2FLInstructionType.put("-", FLINSTRUCTION_TYPE.ArithmeticBinary);

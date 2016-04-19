@@ -48,15 +48,15 @@ public class CheckpointFLInstruction extends UnaryFLInstruction {
     public static CheckpointFLInstruction parseInstruction(String str)
             throws DMLRuntimeException {
         String[] parts = InstructionUtils.getInstructionPartsWithValueType(str);
-        InstructionUtils.checkNumFields(parts, 3);
+        InstructionUtils.checkNumFields(parts, 2); //TODO actually 3
 
         String opcode = parts[0];
         CPOperand in = new CPOperand(parts[1]);
         CPOperand out = new CPOperand(parts[2]);
 
-        StorageLevel level = StorageLevel.fromString(parts[3]);
+        //StorageLevel level = StorageLevel.fromString(parts[3]);
 
-        return new CheckpointFLInstruction(null, in, out, level, opcode, str);
+        return new CheckpointFLInstruction(null, in, out, null, opcode, str);
     }
 
     @Override
