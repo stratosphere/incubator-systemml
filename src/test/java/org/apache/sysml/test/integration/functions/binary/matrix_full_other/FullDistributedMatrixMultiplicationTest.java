@@ -220,7 +220,78 @@ public class FullDistributedMatrixMultiplicationTest extends AutomatedTestBase
 	{
 		runDistributedMatrixMatrixMultiplicationTest(true, true, MMultMethod.RMM, ExecType.SPARK);
 	}
-	
+
+	@Test
+	public void testDenseDenseMapmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(false, false, MMultMethod.MAPMM_R, ExecType.FLINK);
+	}
+
+	@Test
+	public void testDenseSparseMapmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(false, true, MMultMethod.MAPMM_R, ExecType.FLINK);
+	}
+
+	@Test
+	public void testSparseDenseMapmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(true, false, MMultMethod.MAPMM_R, ExecType.FLINK);
+	}
+
+	@Test
+	public void testSparseSparseMapmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(true, true, MMultMethod.MAPMM_R, ExecType.FLINK);
+	}
+
+	@Test
+	public void testDenseDenseCpmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(false, false, MMultMethod.CPMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testDenseSparseCpmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(false, true, MMultMethod.CPMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testSparseDenseCpmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(true, false, MMultMethod.CPMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testSparseSparseCpmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(true, true, MMultMethod.CPMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testDenseDenseRmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(false, false, MMultMethod.RMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testDenseSparseRmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(false, true, MMultMethod.RMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testSparseDenseRmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(true, false, MMultMethod.RMM, ExecType.FLINK);
+	}
+
+	@Test
+	public void testSparseSparseRmmFlink()
+	{
+		runDistributedMatrixMatrixMultiplicationTest(true, true, MMultMethod.RMM, ExecType.FLINK);
+	}
 
 	/**
 	 * 
@@ -235,6 +306,7 @@ public class FullDistributedMatrixMultiplicationTest extends AutomatedTestBase
 		switch( instType ){
 			case MR: rtplatform = RUNTIME_PLATFORM.HADOOP; break;
 			case SPARK: rtplatform = RUNTIME_PLATFORM.SPARK; break;
+			case FLINK: rtplatform = RUNTIME_PLATFORM.FLINK; break;
 			default: rtplatform = RUNTIME_PLATFORM.HYBRID; break;
 		}
 	
@@ -262,7 +334,7 @@ public class FullDistributedMatrixMultiplicationTest extends AutomatedTestBase
 			/* This is for running the junit test the new way, i.e., construct the arguments directly */
 			String HOME = SCRIPT_DIR + TEST_DIR;
 			fullDMLScriptName = HOME + TEST_NAME + ".dml";
-			programArgs = new String[]{"-args", input("A"), input("B"), output("C") };
+			programArgs = new String[]{"-explain", "-args", input("A"), input("B"), output("C") };
 			
 			fullRScriptName = HOME + TEST_NAME + ".R";
 			rCmd = "Rscript" + " " + fullRScriptName + " " + inputDir() + " " + expectedDir();
