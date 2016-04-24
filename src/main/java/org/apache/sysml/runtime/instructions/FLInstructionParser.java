@@ -133,7 +133,8 @@ public class FLInstructionParser extends InstructionParser {
             case AggregateUnary:
                 return AggregateUnaryFLInstruction.parseInstruction(str);
             case Reorg:
-                return CheckpointFLInstruction.parseInstruction(str);
+//                return CheckpointFLInstruction.parseInstruction(str);
+                return ReorgFLInstruction.parseInstruction(str);
             case ArithmeticBinary:
                 return ArithmeticBinaryFLInstruction.parseInstruction(str);
 
@@ -143,8 +144,8 @@ public class FLInstructionParser extends InstructionParser {
 				return CpmmFLInstruction.parseInstruction(str);*/
             case MAPMM:
                 return MapmmFLInstruction.parseInstruction(str);
-			/*case MAPMMCHAIN:
-				return MapmmChainFLInstruction.parseInstruction(str);*/
+			case MAPMMCHAIN:
+				return MapmmChainFLInstruction.parseInstruction(str);
             case TSMM:
                 return TsmmFLInstruction.parseInstruction(str);
 
