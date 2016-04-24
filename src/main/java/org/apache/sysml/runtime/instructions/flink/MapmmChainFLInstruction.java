@@ -26,6 +26,7 @@ import org.apache.sysml.lops.MapMultChain;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.context.ExecutionContext;
 import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
+import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
@@ -98,6 +99,37 @@ public class MapmmChainFLInstruction extends FLInstruction {
         this.inputW = inputW;
         this.output = output;
         this.chainType = chainType;
+    }
+
+    public static MapmmChainFLInstruction parseInstruction( String str ) throws DMLRuntimeException {
+        String[] parts = InstructionUtils.getInstructionPartsWithValueType( str );
+        InstructionUtils.checkNumFields ( parts, 4, 5 );
+        String opcode = parts[0];
+
+        //check supported opcode
+        if ( !opcode.equalsIgnoreCase(MapMultChain.OPCODE)){
+            throw new DMLRuntimeException("MapmmChainSPInstruction.parseInstruction():: Unknown opcode " + opcode);
+        }
+
+        //parse instruction parts (without exec type)
+        CPOperand in1 = new CPOperand(parts[1]);
+        CPOperand in2 = new CPOperand(parts[2]);
+
+        if( parts.length==5 )
+        {
+            CPOperand out = new CPOperand(parts[3]);
+            MapMultChain.ChainType type = MapMultChain.ChainType.valueOf(parts[4]);
+
+            return new MapmmChainFLInstruction(in1, in2, out, type, opcode, str);
+        }
+        else //parts.length==6
+        {
+            CPOperand in3 = new CPOperand(parts[3]);
+            CPOperand out = new CPOperand(parts[4]);
+            MapMultChain.ChainType type = MapMultChain.ChainType.valueOf(parts[5]);
+
+            return new MapmmChainFLInstruction(in1, in2, in3, out, type, opcode, str);
+        }
     }
 
     @Override
