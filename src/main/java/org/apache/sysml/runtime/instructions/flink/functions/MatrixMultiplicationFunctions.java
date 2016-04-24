@@ -185,7 +185,6 @@ public final class MatrixMultiplicationFunctions {
             _op = new AggregateOperator(0, KahanPlus.getKahanPlusFnObject(), true,
                     PartialAggregate.CorrectionLocationType.NONE);
             _corr = null;
-            output.f0 = new MatrixIndexes(1, 1);
         }
 
         @Override
