@@ -74,9 +74,6 @@ public class FLInstructionParser extends InstructionParser {
 
         String2FLInstructionType.put(DataGen.RAND_OPCODE, FLINSTRUCTION_TYPE.Rand);
 
-        // Spark-specific instructions
-        String2FLInstructionType.put(Checkpoint.OPCODE, FLINSTRUCTION_TYPE.Checkpoint);
-
         String2FLInstructionType.put("write", FLINSTRUCTION_TYPE.Write);
 
 		// Reorg Instruction Opcodes (repositioning of existing values)
@@ -133,7 +130,6 @@ public class FLInstructionParser extends InstructionParser {
             case AggregateUnary:
                 return AggregateUnaryFLInstruction.parseInstruction(str);
             case Reorg:
-//                return CheckpointFLInstruction.parseInstruction(str);
                 return ReorgFLInstruction.parseInstruction(str);
             case ArithmeticBinary:
                 return ArithmeticBinaryFLInstruction.parseInstruction(str);
@@ -156,8 +152,6 @@ public class FLInstructionParser extends InstructionParser {
                 return CSVReblockFLInstruction.parseInstruction(str);
             case Write:
                 return WriteFLInstruction.parseInstruction(str);
-            case Checkpoint:
-                return CheckpointFLInstruction.parseInstruction(str);
             case Rand:
                 return RandFLInstruction.parseInstruction(str);
 
