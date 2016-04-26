@@ -50,6 +50,7 @@ import org.apache.sysml.lops.WeightedUnaryMMR;
 import org.apache.sysml.parser.Expression.DataType;
 import org.apache.sysml.parser.Expression.ValueType;
 import org.apache.sysml.runtime.controlprogram.ParForProgramBlock.PDataPartitionFormat;
+import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.controlprogram.context.SparkExecutionContext;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.mapred.DistributedCacheInput;
@@ -586,7 +587,7 @@ public class QuaternaryOp extends Hop implements MultiThreadedHop
 		//Notes: Any broadcast needs to fit twice in local memory because we partition the input in cp,
 		//and needs to fit once in executor broadcast memory. The 2GB broadcast constraint is no longer
 		//required because the max_int byte buffer constraint has been fixed in Spark 1.4 
-		double memBudgetExec = SparkExecutionContext.getBroadcastMemoryBudget();
+		double memBudgetExec = FlinkExecutionContext.getBroadcastMemoryBudget();
 		double memBudgetLocal = OptimizerUtils.getLocalMemBudget();
 
 		Hop X = getInput().get(0);
