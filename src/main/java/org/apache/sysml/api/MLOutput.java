@@ -63,10 +63,6 @@ public class MLOutput {
 		this._outputs = outputs;
 		this._outMetadata = outMetadata;
 	}
-
-	public MLOutput(HashMap<String, MatrixCharacteristics> outMetadata) {
-		this._outMetadata = outMetadata;
-	}
 	
 	public JavaPairRDD<MatrixIndexes,MatrixBlock> getBinaryBlockedRDD(String varName) throws DMLRuntimeException {
 		if(_outputs.containsKey(varName)) {
