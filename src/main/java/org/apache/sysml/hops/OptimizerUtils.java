@@ -39,6 +39,7 @@ import org.apache.sysml.lops.LopProperties.ExecType;
 import org.apache.sysml.parser.Expression.ValueType;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.LocalVariableMap;
+import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.controlprogram.context.SparkExecutionContext;
 import org.apache.sysml.runtime.controlprogram.parfor.stat.InfrastructureAnalyzer;
 import org.apache.sysml.runtime.instructions.cp.Data;
@@ -439,7 +440,7 @@ public class OptimizerUtils
 	 */
 	public static boolean checkFlinkBroadcastMemoryBudget( double size )
 	{
-		double memBudgetExec = SparkExecutionContext.getBroadcastMemoryBudget(); //TODO: change this
+		double memBudgetExec = FlinkExecutionContext.getBroadcastMemoryBudget(); //TODO: change this
 		double memBudgetLocal = OptimizerUtils.getLocalMemBudget();
 
 		//basic requirement: the broadcast needs to to fit once in the remote broadcast memory 
