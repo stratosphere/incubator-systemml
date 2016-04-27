@@ -458,10 +458,11 @@ public class AggUnaryOp extends Hop implements MultiThreadedHop
 		if( _etype == ExecType.CP && _etypeForced != ExecType.CP
 			&& !(getInput().get(0) instanceof DataOp)  //input is not checkpoint
 			&& getInput().get(0).getParent().size()==1 //uagg is only parent
-			&& getInput().get(0).optFindExecType() == ExecType.SPARK )					
+			&& (getInput().get(0).optFindExecType() == ExecType.SPARK 
+			|| getInput().get(0).optFindExecType() == ExecType.FLINK))
 		{
-			//pull unary aggregate into spark 
-			_etype = ExecType.SPARK;
+			//pull unary aggregate into spark/flink 
+			_etype = OptimizerUtils.getRemoteExecType();
 		}
 		
 		//mark for recompile (forever)
