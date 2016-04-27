@@ -66,6 +66,7 @@ public class FLInstructionParser extends InstructionParser {
         String2FLInstructionType.put("mapmmchain", FLINSTRUCTION_TYPE.MAPMMCHAIN);
         String2FLInstructionType.put("tsmm", FLINSTRUCTION_TYPE.TSMM);
         String2FLInstructionType.put("cpmm", FLINSTRUCTION_TYPE.CPMM);
+		String2FLInstructionType.put( "zipmm", FLINSTRUCTION_TYPE.ZIPMM);
 
         // REBLOCK Instruction Opcodes
         String2FLInstructionType.put("rblk", FLINSTRUCTION_TYPE.Reblock);
@@ -145,6 +146,8 @@ public class FLInstructionParser extends InstructionParser {
 				return MapmmChainFLInstruction.parseInstruction(str);
             case TSMM:
                 return TsmmFLInstruction.parseInstruction(str);
+			case ZIPMM:
+				return ZipmmFLInstruction.parseInstruction(str);
 
 
             case Reblock:

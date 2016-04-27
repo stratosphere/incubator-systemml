@@ -94,22 +94,74 @@ public class ZipMMSparkMatrixMultiplicationTest extends AutomatedTestBase
 	}
 	
 	@Test
-	public void testZipMMDenseSparseMVSP() 
+	public void testZipMMDenseSparseMVFL() 
+	{
+		runZipMMMatrixMultiplicationTest(false, true, ExecType.FLINK, true);
+	}
+	
+	@Test
+	public void testZipMMSparseDenseMVFL() 
+	{
+		runZipMMMatrixMultiplicationTest(true, false, ExecType.FLINK, true);
+	}
+	
+	@Test
+	public void testZipMMSparseSparseMVFL() 
+	{
+		runZipMMMatrixMultiplicationTest(true, true, ExecType.FLINK, true);
+	}
+
+
+
+	@Test
+	public void testZipMMDenseDenseFL()
+	{
+		runZipMMMatrixMultiplicationTest(false, false, ExecType.FLINK, false);
+	}
+
+	@Test
+	public void testZipMMDenseSparseFL()
+	{
+		runZipMMMatrixMultiplicationTest(false, true, ExecType.FLINK, false);
+	}
+
+	@Test
+	public void testZipMMSparseDenseFL()
+	{
+		runZipMMMatrixMultiplicationTest(true, false, ExecType.FLINK, false);
+	}
+
+	@Test
+	public void testZipMMSparseSparseFL()
+	{
+		runZipMMMatrixMultiplicationTest(true, true, ExecType.FLINK, false);
+	}
+
+	@Test
+	public void testZipMMDenseDenseMVFL()
+	{
+		runZipMMMatrixMultiplicationTest(false, false, ExecType.FLINK, true);
+	}
+
+	@Test
+	public void testZipMMDenseSparseMVSP()
 	{
 		runZipMMMatrixMultiplicationTest(false, true, ExecType.SPARK, true);
 	}
-	
+
 	@Test
-	public void testZipMMSparseDenseMVSP() 
+	public void testZipMMSparseDenseMVSP()
 	{
 		runZipMMMatrixMultiplicationTest(true, false, ExecType.SPARK, true);
 	}
-	
+
 	@Test
-	public void testZipMMSparseSparseMVSP() 
+	public void testZipMMSparseSparseMVSP()
 	{
 		runZipMMMatrixMultiplicationTest(true, true, ExecType.SPARK, true);
 	}
+	
+	
 	
 	/**
 	 * 
@@ -124,6 +176,7 @@ public class ZipMMSparkMatrixMultiplicationTest extends AutomatedTestBase
 		switch( instType ){
 			case MR: rtplatform = RUNTIME_PLATFORM.HADOOP; break;
 			case SPARK: rtplatform = RUNTIME_PLATFORM.SPARK; break;
+			case FLINK: rtplatform = RUNTIME_PLATFORM.FLINK; break;
 			default: rtplatform = RUNTIME_PLATFORM.HYBRID; break;
 		}
 	

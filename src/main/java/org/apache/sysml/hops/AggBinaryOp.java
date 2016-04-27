@@ -264,10 +264,10 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 						break;
 					case PMM:
 						constructSparkLopsPMM();
-						break;
-					case ZIPMM:
-						constructSparkLopsZIPMM();
 						break;*/
+					case ZIPMM:
+						constructFlinkLopsZIPMM();
+						break;
 
 					default:
 						throw new HopsException(this.printErrorLocation() + "Invalid Matrix Mult Method (" + _method + ") while constructing SPARK lops.");
@@ -914,6 +914,30 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 		out.getOutputParameters().setDimensions(X.getDim2(), Y.getDim2(), getRowsInBlock(), getColsInBlock(), getNnz());
 
 		return out;
+	}
+
+	/**
+	 *
+	 * @throws HopsException
+	 * @throws LopsException
+	 */
+	private void constructFlinkLopsZIPMM()
+		throws HopsException, LopsException
+	{
+		//zipmm applies to t(X)%*%y if ncol(X)<=blocksize and it prevents 
+		//unnecessary reshuffling by keeping the original indexes (and partitioning) 
+		//joining the datasets, and internally doing the necessary transpose operations
+
+		Hop left = getInput().get(0).getInput().get(0); //x out of t(X)
+		Hop right = getInput().get(1); //y
+
+		//determine left-transpose rewrite beneficial
+		boolean tRewrite = (left.getDim1()*left.getDim2() >= right.getDim1()*right.getDim2());
+
+		Lop zipmm = new MMZip(left.constructLops(), right.constructLops(), getDataType(), getValueType(), tRewrite, ExecType.FLINK);
+		setOutputDimensions(zipmm);
+		setLineNumbers( zipmm );
+		setLops(zipmm);
 	}
 	
 	
