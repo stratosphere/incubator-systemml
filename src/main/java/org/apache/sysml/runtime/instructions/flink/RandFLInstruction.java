@@ -41,7 +41,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 
-import org.apache.spark.util.random.SamplingUtils;
 import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 
 import org.apache.sysml.api.DMLScript;
@@ -58,6 +57,7 @@ import org.apache.sysml.runtime.controlprogram.parfor.stat.InfrastructureAnalyze
 import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetConverterUtils;
+import org.apache.sysml.runtime.instructions.flink.utils.SamplingUtils;
 import org.apache.sysml.runtime.io.IOUtilFunctions;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.data.LibMatrixDatagen;
