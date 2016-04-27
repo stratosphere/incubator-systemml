@@ -231,14 +231,14 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 			}
 			else if( et == ExecType.FLINK )
 			{
-				//matrix mult operation selection part 3 (SPARK type)
+				//matrix mult operation selection part 3 (Flink type)
 				boolean tmmRewrite = input1 instanceof ReorgOp && ((ReorgOp)input1).getOp()==ReOrgOp.TRANSPOSE;
 				_method = optFindMMultMethodFlink (
 					input1.getDim1(), input1.getDim2(), input1.getRowsInBlock(), input1.getColsInBlock(), input1.getNnz(),
 					input2.getDim1(), input2.getDim2(), input2.getRowsInBlock(), input2.getColsInBlock(), input2.getNnz(),
 					mmtsj, chain, _hasLeftPMInput, tmmRewrite );
 
-				//dispatch SPARK lops construction 
+				//dispatch Flink lops construction 
 				switch( _method )
 				{
 					case TSMM:
