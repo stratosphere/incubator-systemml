@@ -29,7 +29,7 @@ import org.apache.sysml.runtime.matrix.operators.Operator;
 public abstract class FLInstruction extends Instruction {
 
     public enum FLINSTRUCTION_TYPE {
-        TSMM, Reorg, Reblock, CSVReblock, Write, ArithmeticBinary, AggregateUnary, INVALID, MAPMM, MAPMMCHAIN, CPMM, //RMM, PMM, ZIPMM, PMAPMM, //matrix multiplication instructions
+        TSMM, Reorg, Reblock, CSVReblock, Write, ArithmeticBinary, AggregateUnary, INVALID, MAPMM, MAPMMCHAIN, CPMM, RMM, //, PMM, ZIPMM, PMAPMM, //matrix multiplication instructions
         //        MatrixIndexing, RelationalBinary, AggregateUnary, AggregateTernary,
 //        Builtin, BuiltinUnary, BuiltinBinary,
 //        CentralMoment, Covariance, QSort, QPick,

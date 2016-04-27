@@ -258,11 +258,11 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 					case CPMM:
 						constructFlinkLopsCPMM();
 						break;
-					/*
+					
 					case RMM:
-						constructSparkLopsRMM();
+						constructFlinkLopsRMM();
 						break;
-					case PMM:
+					/*case PMM:
 						constructSparkLopsPMM();
 						break;
 					case ZIPMM:
@@ -1114,6 +1114,21 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 	{
 		Lop rmm = new MMRJ(getInput().get(0).constructLops(),getInput().get(1).constructLops(), 
 				          getDataType(), getValueType(), ExecType.SPARK);
+		setOutputDimensions(rmm);
+		setLineNumbers( rmm );
+		setLops(rmm);
+	}
+
+	/**
+	 *
+	 * @throws LopsException
+	 * @throws HopsException
+	 */
+	private void constructFlinkLopsRMM()
+		throws LopsException, HopsException
+	{
+		Lop rmm = new MMRJ(getInput().get(0).constructLops(),getInput().get(1).constructLops(),
+			getDataType(), getValueType(), ExecType.FLINK);
 		setOutputDimensions(rmm);
 		setLineNumbers( rmm );
 		setLops(rmm);
