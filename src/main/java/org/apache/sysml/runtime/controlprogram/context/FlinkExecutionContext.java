@@ -21,6 +21,7 @@ package org.apache.sysml.runtime.controlprogram.context;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -42,20 +43,17 @@ import org.apache.sysml.utils.Statistics;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class FlinkExecutionContext extends ExecutionContext {
 
-	//internal configurations 
-	private static boolean LAZY_SPARKCTX_CREATION = true;
-	private static boolean ASYNCHRONOUS_VAR_DESTROY = true;
-	private static boolean FAIR_SCHEDULER_MODE = true;
-
-	//executor memory and relative fractions as obtained from the spark configuration
-	private static long _memExecutors = -1; //mem per executors
-	private static double _memRatioData = -1;
-	private static double _memRatioShuffle = -1;
-	private static int _numExecutors = -1; //total executors
-	private static int _defaultPar = -1; //total vcores  
+	//executor memory and relative fractions as obtained from the flink configuration
+	private static long _memTaskManagerTotal = -1; // total heap memory per taskmanager
+	private static double _memTaskManagerManagedFraction = 0.7; // ratio that flink uses for managed memory
+	private static double _memTaskManagerManaged = -1; // absolute managed memory for flink operators
+	private static int _numTaskmanagers = -1; //total executors
+	private static int _defaultPar = -1; //total vcores
+    private static long _memNetworkBuffers = -1;
 	private static boolean _confOnly = false; //infrastructure info based on config
 
     private static final Log LOG = LogFactory.getLog(FlinkExecutionContext.class.getName());
@@ -414,6 +412,15 @@ public class FlinkExecutionContext extends ExecutionContext {
         return out;
     }
 
+    public void execute() {
+        // FIXME track number of sinks
+        // HACK ALERT !!!
+        try {
+            _execEnv.execute();
+        } catch (Exception e) {
+            System.out.println("Find a better solution");
+        }
+    }
 
 	/**
 	 * Returns the available memory budget for broadcast variables in bytes.
@@ -424,29 +431,73 @@ public class FlinkExecutionContext extends ExecutionContext {
 	 *
 	 * @return
 	 */
-	public static double getBroadcastMemoryBudget()
-	{
-		/*
-		if( _memExecutors < 0 || _memRatioData < 0 || _memRatioShuffle < 0 )
-			analyzeSparkConfiguation();
-			*/
+	public static double getBroadcastMemoryBudget() {
+		if (_memNetworkBuffers < 0) {
+            analyzeFlinkConfiguration();
+        }
 
-		//70% of remaining free memory
-		double membudget = OptimizerUtils.MEM_UTIL_FACTOR *
-			(  _memExecutors
-				- _memExecutors*(_memRatioData+_memRatioShuffle) );
-
-		return membudget;
+		//70% of remaining free memory, flink uses network buffers for broadcast variables
+		return OptimizerUtils.MEM_UTIL_FACTOR * _memNetworkBuffers;
 	}
 
-    public void execute() {
-        // FIXME track number of sinks
-        // HACK ALERT !!!
-        try {
-            _execEnv.execute();
-        } catch (Exception e) {
-            System.out.println("Find a better solution");
+    public static double getConfiguredTotalDataMemory() {
+        if (_memTaskManagerManaged < 0) {
+            analyzeFlinkConfiguration();
         }
+
+        //TODO do we need total heap memory here, remaining memory or available/non-flink-managed memory?
+        return _numTaskmanagers * _memTaskManagerManaged;
+    }
+
+    public static int getNumTaskmanagers() {
+        if (_numTaskmanagers < 0) {
+            analyzeFlinkConfiguration();
+        }
+        return _numTaskmanagers;
+    }
+
+    public static int getDefaultParallelism() { return getDefaultParallelism(false); }
+
+    public static int getDefaultParallelism(boolean refresh) {
+        if (_defaultPar < 0 && !refresh) {
+            analyzeFlinkConfiguration();
+        }
+
+        if (refresh) {
+            return _execEnv.getParallelism();
+        } else {
+            return _defaultPar;
+        }
+    }
+
+    public static void analyzeFlinkConfiguration() {
+        ExecutionConfig conf = _execEnv.getConfig();
+        Map<String, String> params = conf.getGlobalJobParameters().toMap();
+
+        // get the total memory for the taskmanager
+        _memTaskManagerTotal  = Long.parseLong(params.getOrDefault("taskmanager.heap.mb", "512")) * 1024 * 1024;
+        // get the memory that is managed by flink for the operators (sorting, hashing, caching)
+        String taskManagerMemSize = params.getOrDefault("taskmanager.memory.size", "-1");
+
+        // if the task manager memory size is not set, it is evaluated with the fraction
+        if (taskManagerMemSize != "-1") {
+            _memTaskManagerManaged = Long.parseLong(taskManagerMemSize) * 1024 * 1024;
+        } else {
+            _memTaskManagerManagedFraction = Double.parseDouble(params.getOrDefault("taskmanager.memory.fraction", "0.7"));
+            _memTaskManagerManaged         = _memTaskManagerManagedFraction * _memTaskManagerTotal;
+        }
+
+        // number of slots per taskmanager
+        int numTaskSlots = Integer.parseInt(params.getOrDefault("taskmanager.numberOfTaskSlots", "1"));
+        // total number of slots
+        _defaultPar   = Integer.parseInt(params.getOrDefault("parallelization.degree.default", "1"));
+        // number of taskmanagers = ceil(total slots / number of slots per taskmanager)
+        _numTaskmanagers = (int) Math.ceil(_defaultPar / numTaskSlots); // calculate the number of taskmanagers
+
+        // network buffers (for boradcasts/shuffles)
+        int numNetworkBuffers = Integer.parseInt(params.getOrDefault("taskmanager.network.numberOfBuffers", "2048"));
+        int networkBufferSize = Integer.parseInt(params.getOrDefault("taskmanager.network.bufferSizeInBytes", "32768"));
+        _memNetworkBuffers = numNetworkBuffers * networkBufferSize;
     }
 
 
