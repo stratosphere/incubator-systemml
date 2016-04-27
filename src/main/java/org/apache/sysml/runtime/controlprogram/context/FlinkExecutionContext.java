@@ -437,7 +437,7 @@ public class FlinkExecutionContext extends ExecutionContext {
         }
 
 		//70% of remaining free memory, flink uses network buffers for broadcast variables
-		return OptimizerUtils.MEM_UTIL_FACTOR * _memNetworkBuffers;
+		return OptimizerUtils.MEM_UTIL_FACTOR * (_memTaskManagerTotal - _memTaskManagerManaged - _memNetworkBuffers);
 	}
 
     public static double getConfiguredTotalDataMemory() {
