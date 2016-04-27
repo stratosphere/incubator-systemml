@@ -29,9 +29,7 @@ import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.instructions.cp.ScalarObject;
-import org.apache.sysml.runtime.instructions.flink.functions.MatrixMatrixBinaryOpFunction;
-import org.apache.sysml.runtime.instructions.flink.functions.MatrixScalarFunction;
-import org.apache.sysml.runtime.instructions.flink.functions.ReplicateVectorFunction;
+import org.apache.sysml.runtime.instructions.flink.functions.*;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
@@ -148,10 +146,44 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
      * @param vtype
      * @throws DMLRuntimeException
      */
-    protected void processMatrixBVectorBinaryInstruction(ExecutionContext ec, VectorType vtype)
-            throws DMLRuntimeException {
-        throw new DMLRuntimeException("not supported yet");
-    }
+	protected void processMatrixBVectorBinaryInstruction(ExecutionContext ec, VectorType vtype)
+		throws DMLRuntimeException
+	{
+		FlinkExecutionContext flec = (FlinkExecutionContext)ec;
+
+		//sanity check dimensions
+		checkMatrixMatrixBinaryCharacteristics(flec);
+
+		//get input RDDs
+		String rddVar = input1.getName();
+		String bcastVar = input2.getName();
+		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in1 = flec.getBinaryBlockDataSetHandleForVariable( rddVar );
+		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in2 = flec.getBinaryBlockDataSetHandleForVariable( bcastVar );
+		MatrixCharacteristics mc1 = flec.getMatrixCharacteristics(rddVar);
+		MatrixCharacteristics mc2 = flec.getMatrixCharacteristics(bcastVar);
+
+		BinaryOperator bop = (BinaryOperator) _optr;
+		boolean isOuter = (mc1.getRows()>1 && mc1.getCols()==1 && mc2.getRows()==1 && mc2.getCols()>1);
+
+		//execute map binary operation
+		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> out = null;
+		if( isOuter ) {
+			out = in1.flatMap(new OuterVectorBinaryOpFunction(bop)).withBroadcastSet(in2, "bcastVar");
+		}
+		else { //default
+			//note: we use mappartition in order to preserve partitioning information for
+			//binary mv operations where the keys are guaranteed not to change, the reason
+			//why we cannot use mapValues is the need for broadcast key lookups.
+			//alternative: out = in1.mapToPair(new MatrixVectorBinaryOpFunction(bop, in2, vtype));
+			out = in1.map(
+				new MatrixVectorBinaryOpPartitionFunction(bop, vtype)).withBroadcastSet(in2, "bcastVar");
+		}
+
+		//set output RDD
+		updateBinaryOutputMatrixCharacteristics(flec);
+		flec.setDataSetHandleForVariable(output.getName(), out);
+		flec.addLineageDataSet(output.getName(), rddVar);
+	}
 
     /**
      * @param fec

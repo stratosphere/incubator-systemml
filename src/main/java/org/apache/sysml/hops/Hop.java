@@ -350,8 +350,7 @@ public abstract class Hop
 	{
 		//determine execution type
 		ExecType et = ExecType.CP;
-		if( OptimizerUtils.isSparkExecutionMode() 
-			&& getDataType()!=DataType.SCALAR )
+		if (OptimizerUtils.isSparkExecutionMode() && getDataType() != DataType.SCALAR)
 		{
 			//conditional checkpoint based on memory estimate in order to 
 			//(1) avoid unnecessary persist and unpersist calls, and 
@@ -934,7 +933,6 @@ public abstract class Hop
 	/**
 	 * Test and debugging only.
 	 * 
-	 * @param h
 	 * @throws HopsException 
 	 */
 	public void checkParentChildPointers( ) 

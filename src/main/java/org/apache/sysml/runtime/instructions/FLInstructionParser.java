@@ -19,7 +19,6 @@
 
 package org.apache.sysml.runtime.instructions;
 
-import org.apache.sysml.lops.Checkpoint;
 import org.apache.sysml.lops.DataGen;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.instructions.flink.*;
@@ -72,7 +71,9 @@ public class FLInstructionParser extends InstructionParser {
         String2FLInstructionType.put("rblk", FLINSTRUCTION_TYPE.Reblock);
         String2FLInstructionType.put("csvrblk", FLINSTRUCTION_TYPE.CSVReblock);
 
-        String2FLInstructionType.put(DataGen.RAND_OPCODE, FLINSTRUCTION_TYPE.Rand);
+		String2FLInstructionType.put( DataGen.RAND_OPCODE  , FLINSTRUCTION_TYPE.Rand);
+		String2FLInstructionType.put( DataGen.SEQ_OPCODE   , FLINSTRUCTION_TYPE.Rand);
+		String2FLInstructionType.put( DataGen.SAMPLE_OPCODE, FLINSTRUCTION_TYPE.Rand);
 
         String2FLInstructionType.put("write", FLINSTRUCTION_TYPE.Write);
 
@@ -83,24 +84,24 @@ public class FLInstructionParser extends InstructionParser {
 		String2FLInstructionType.put( "rsort"      , FLINSTRUCTION_TYPE.Reorg);
 
         // ArithmeticBinary
-        String2FLInstructionType.put("+", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("-", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("*", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("/", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("%%", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("%/%", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("1-*", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("^", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("^2", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("*2", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map+", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map-", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map*", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map/", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map%%", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map%/%", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map1-*", FLINSTRUCTION_TYPE.ArithmeticBinary);
-        String2FLInstructionType.put("map^", FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "+"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "-"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "*"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "/"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "%%"   , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "%/%"  , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "1-*"  , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "^"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "^2"   , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "*2"   , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map+"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map-"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map*"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map/"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map%%"   , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map%/%"  , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map1-*"  , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
+		String2FLInstructionType.put( "map^"    , FLInstruction.FLINSTRUCTION_TYPE.ArithmeticBinary);
 
         String2FLInstructionType.put("write", FLINSTRUCTION_TYPE.Write);
 
@@ -152,7 +153,8 @@ public class FLInstructionParser extends InstructionParser {
                 return CSVReblockFLInstruction.parseInstruction(str);
             case Write:
                 return WriteFLInstruction.parseInstruction(str);
-            case Rand:
+			
+			case Rand:
                 return RandFLInstruction.parseInstruction(str);
 
 
