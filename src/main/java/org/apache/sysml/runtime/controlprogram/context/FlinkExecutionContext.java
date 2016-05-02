@@ -471,7 +471,11 @@ public class FlinkExecutionContext extends ExecutionContext {
     }
 
     public static void analyzeFlinkConfiguration() {
+        if (_execEnv == null) {
+            _execEnv = ExecutionEnvironment.getExecutionEnvironment();
+        }
         ExecutionConfig conf = _execEnv.getConfig();
+
         Map<String, String> params = conf.getGlobalJobParameters().toMap();
 
         // get the total memory for the taskmanager
