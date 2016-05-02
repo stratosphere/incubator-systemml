@@ -32,7 +32,9 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.sysml.hops.OptimizerUtils;
 import org.apache.sysml.runtime.DMLRuntimeException;
+import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.io.IOUtilFunctions;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.data.CSVFileFormatProperties;
@@ -404,6 +406,9 @@ public class DataSetConverterUtils {
             ReblockBuffer rbuff = new ReblockBuffer(_bufflen, _rlen, _clen, _brlen, _bclen);
             FastStringTokenizer st = new FastStringTokenizer(' ');
 
+            long row;
+            long col;
+            double val;
             //get input string (ignore matrix market comments)
             for (Text text : textCollection) {
                 String strVal = text.toString();
@@ -413,9 +418,9 @@ public class DataSetConverterUtils {
 
                 //parse input ijv triple
                 st.reset(strVal);
-                long row = st.nextLong();
-                long col = st.nextLong();
-                double val = st.nextDouble();
+                row = st.nextLong();
+                col = st.nextLong();
+                val = st.nextDouble();
 
                 //flush buffer if necessary
                 if (rbuff.getSize() >= rbuff.getCapacity()) {
@@ -446,6 +451,7 @@ public class DataSetConverterUtils {
         protected int _bclen = -1;
 
         MatrixCharacteristics mc = null;
+        RuntimeContext ctx = null;
 
         public CellToBinaryBlockFunction() {
 
@@ -462,8 +468,16 @@ public class DataSetConverterUtils {
             _brlen = mc.getRowsPerBlock();
             _bclen = mc.getColsPerBlock();
 
+            ctx = getRuntimeContext();
+            int numSlots = ctx.getNumberOfParallelSubtasks();
+
+            long freeMemory = FlinkExecutionContext.getBroadcastMemoryBudget();
+
+            // in flink, each slot only has limited memory - we have to dynamically set the buffer size so that we don't run out of memory
+            int numElems = (int) ((freeMemory / numSlots) / 8) / 3;
+
             //determine upper bounded buffer len
-            _bufflen = (int) Math.min(_rlen * _clen, BUFFER_SIZE);
+            _bufflen = (int) Math.min(_rlen * _clen, Math.min(BUFFER_SIZE, numElems));
         }
 
         /**

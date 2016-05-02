@@ -26,6 +26,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.sysml.api.DMLScript;
@@ -54,6 +55,7 @@ public class FlinkExecutionContext extends ExecutionContext {
 	private static double _memTaskManagerManaged = -1; // absolute managed memory for flink operators
 	private static int _numTaskmanagers = -1; //total executors
 	private static int _defaultPar = -1; //total vcores
+    private static int _slotsPerTaskManager = -1;
     private static long _memNetworkBuffers = -1;
 	private static boolean _confOnly = false; //infrastructure info based on config
 
@@ -432,77 +434,60 @@ public class FlinkExecutionContext extends ExecutionContext {
 	 *
 	 * @return
 	 */
-	public static double getBroadcastMemoryBudget() {
-		if (_memNetworkBuffers < 0) {
-            analyzeFlinkConfiguration();
-        }
+	public static long getBroadcastMemoryBudget() {
 
-		//70% of remaining free memory, flink uses network buffers for broadcast variables
-		return OptimizerUtils.MEM_UTIL_FACTOR * (_memTaskManagerTotal - _memTaskManagerManaged - _memNetworkBuffers);
+        Runtime runtime = Runtime.getRuntime();
+        // FIXME the 0.7 here is flinks default for static memory allocation - should be read from the config
+        double maxMem = runtime.totalMemory() - (runtime.totalMemory() * 0.75);
+
+        // TODO should we call the gc here to get a better estimate?
+        // get the free memory - at this point Flink has already allocated the managed memory statically
+        return (long) (OptimizerUtils.MEM_UTIL_FACTOR  * maxMem);
 	}
 
-    public static double getConfiguredTotalDataMemory() {
-        if (_memTaskManagerManaged < 0) {
-            analyzeFlinkConfiguration();
-        }
-
-        //TODO do we need total heap memory here, remaining memory or available/non-flink-managed memory?
-        return _numTaskmanagers * _memTaskManagerManaged;
-    }
-
-    public static int getNumTaskmanagers() {
-        if (_numTaskmanagers < 0) {
-            analyzeFlinkConfiguration();
-        }
-        return _numTaskmanagers;
-    }
+    /**
+     * Computes the memory that is available to every thread in the taskmanager
+     * @return
+     */
 
     public static int getDefaultParallelism() { return getDefaultParallelism(false); }
 
     public static int getDefaultParallelism(boolean refresh) {
-        if (_defaultPar < 0 && !refresh) {
-            analyzeFlinkConfiguration();
+        if (_defaultPar < 0 || refresh) {
+            _defaultPar  = _execEnv.getParallelism();
         }
-
-        if (refresh) {
-            return _execEnv.getParallelism();
-        } else {
-            return _defaultPar;
-        }
+        return _defaultPar;
     }
 
-    public static void analyzeFlinkConfiguration() {
-        if (_execEnv == null) {
-            _execEnv = ExecutionEnvironment.getExecutionEnvironment();
-        }
-        ExecutionConfig conf = _execEnv.getConfig();
-        ExecutionConfig.GlobalJobParameters globalJobParameters = conf.getGlobalJobParameters();
+    // FIXME this method does not fully work right now since we cannot parse the configuration without a Jobmanager running
+    public static void analyzeFlinkConfiguration(ExecutionConfig conf) {
 
-        Map<String, String> params = globalJobParameters != null ? globalJobParameters.toMap() : new HashedMap();
+
+        Map<String, String> parameters = conf.getGlobalJobParameters().toMap();
 
         // get the total memory for the taskmanager
-        _memTaskManagerTotal  = Long.parseLong(params.getOrDefault("taskmanager.heap.mb", "512")) * 1024 * 1024;
+        _memTaskManagerTotal  = Integer.parseInt(parameters.getOrDefault("taskmanager.heap.mb", "512")) * 1024 * 1024;
         // get the memory that is managed by flink for the operators (sorting, hashing, caching)
-        String taskManagerMemSize = params.getOrDefault("taskmanager.memory.size", "-1");
+        int taskManagerMemSize = Integer.parseInt(parameters.getOrDefault("taskmanager.memory.size", "-1"));
 
         // if the task manager memory size is not set, it is evaluated with the fraction
-        if (taskManagerMemSize != "-1") {
-            _memTaskManagerManaged = Long.parseLong(taskManagerMemSize) * 1024 * 1024;
+        if (taskManagerMemSize > 0) {
+            _memTaskManagerManaged = taskManagerMemSize * 1024 * 1024;
         } else {
-            _memTaskManagerManagedFraction = Double.parseDouble(params.getOrDefault("taskmanager.memory.fraction", "0.7"));
+            _memTaskManagerManagedFraction = Double.parseDouble(parameters.getOrDefault("taskmanager.memory.fraction", "0.7"));
             _memTaskManagerManaged         = _memTaskManagerManagedFraction * _memTaskManagerTotal;
         }
 
         // number of slots per taskmanager
-        int numTaskSlots = Integer.parseInt(params.getOrDefault("taskmanager.numberOfTaskSlots", "1"));
+        _slotsPerTaskManager = Integer.parseInt(parameters.getOrDefault("taskmanager.numberOfTaskSlots", "1"));
         // total number of slots
-        _defaultPar   = Integer.parseInt(params.getOrDefault("parallelization.degree.default", "1"));
+        _defaultPar   = Integer.parseInt(parameters.getOrDefault("parallelization.degree.default", "1"));
         // number of taskmanagers = ceil(total slots / number of slots per taskmanager)
-        _numTaskmanagers = (int) Math.ceil(_defaultPar / numTaskSlots); // calculate the number of taskmanagers
+        _numTaskmanagers = (int) Math.ceil(_defaultPar / _slotsPerTaskManager); // calculate the number of taskmanagers
 
         // network buffers (for boradcasts/shuffles)
-        int numNetworkBuffers = Integer.parseInt(params.getOrDefault("taskmanager.network.numberOfBuffers", "2048"));
-        int networkBufferSize = Integer.parseInt(params.getOrDefault("taskmanager.network.bufferSizeInBytes", "32768"));
+        int numNetworkBuffers = Integer.parseInt(parameters.getOrDefault("taskmanager.network.numberOfBuffers", "2048"));
+        int networkBufferSize = Integer.parseInt(parameters.getOrDefault("taskmanager.network.bufferSizeInBytes", "32768"));
         _memNetworkBuffers = numNetworkBuffers * networkBufferSize;
     }
 
