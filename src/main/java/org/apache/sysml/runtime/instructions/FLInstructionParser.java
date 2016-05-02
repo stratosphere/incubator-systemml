@@ -62,10 +62,11 @@ public class FLInstructionParser extends InstructionParser {
 
 
         //binary aggregate operators (matrix multiplication operators)
-        String2FLInstructionType.put("mapmm", FLINSTRUCTION_TYPE.MAPMM);
-        String2FLInstructionType.put("mapmmchain", FLINSTRUCTION_TYPE.MAPMMCHAIN);
-        String2FLInstructionType.put("tsmm", FLINSTRUCTION_TYPE.TSMM);
-        String2FLInstructionType.put("cpmm", FLINSTRUCTION_TYPE.CPMM);
+		String2FLInstructionType.put("mapmm", FLINSTRUCTION_TYPE.MAPMM);
+		String2FLInstructionType.put("mapmmchain", FLINSTRUCTION_TYPE.MAPMMCHAIN);
+		String2FLInstructionType.put("tsmm", FLINSTRUCTION_TYPE.TSMM);
+		String2FLInstructionType.put("cpmm", FLINSTRUCTION_TYPE.CPMM);
+		String2FLInstructionType.put("rmm", FLINSTRUCTION_TYPE.RMM);
 
         // REBLOCK Instruction Opcodes
         String2FLInstructionType.put("rblk", FLINSTRUCTION_TYPE.Reblock);
@@ -139,6 +140,8 @@ public class FLInstructionParser extends InstructionParser {
             /*
 			case CPMM:
 				return CpmmFLInstruction.parseInstruction(str);*/
+			case RMM:
+				return RmmFLInstruction.parseInstruction(str);
             case MAPMM:
                 return MapmmFLInstruction.parseInstruction(str);
 			case MAPMMCHAIN:
