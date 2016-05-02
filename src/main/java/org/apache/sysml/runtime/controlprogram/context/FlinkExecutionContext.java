@@ -19,6 +19,7 @@
 
 package org.apache.sysml.runtime.controlprogram.context;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -475,8 +476,9 @@ public class FlinkExecutionContext extends ExecutionContext {
             _execEnv = ExecutionEnvironment.getExecutionEnvironment();
         }
         ExecutionConfig conf = _execEnv.getConfig();
+        ExecutionConfig.GlobalJobParameters globalJobParameters = conf.getGlobalJobParameters();
 
-        Map<String, String> params = conf.getGlobalJobParameters().toMap();
+        Map<String, String> params = globalJobParameters != null ? globalJobParameters.toMap() : new HashedMap();
 
         // get the total memory for the taskmanager
         _memTaskManagerTotal  = Long.parseLong(params.getOrDefault("taskmanager.heap.mb", "512")) * 1024 * 1024;
