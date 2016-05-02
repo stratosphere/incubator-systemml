@@ -79,8 +79,8 @@ public class MatrixVectorBinaryOpPartitionFunction extends RichMapFunction<Tuple
 		throws Exception 
 	{
 		//get the rhs block 
-		int rix= (int)((_vtype==VectorType.COL_VECTOR) ? arg0.f0.getRowIndex() : 1);
-		int cix= (int)((_vtype==VectorType.COL_VECTOR) ? 1 : arg0.f0.getColumnIndex());
+		long rix= ((_vtype==VectorType.COL_VECTOR) ? arg0.f0.getRowIndex() : 1L);
+		long cix= ((_vtype==VectorType.COL_VECTOR) ? 1L : arg0.f0.getColumnIndex());
 		MatrixBlock in2 = _pmV.get(rix).get(cix);
 
 		//execute the binary operation
