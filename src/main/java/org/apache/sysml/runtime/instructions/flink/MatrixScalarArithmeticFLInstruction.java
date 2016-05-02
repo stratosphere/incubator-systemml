@@ -51,11 +51,8 @@ public class MatrixScalarArithmeticFLInstruction extends ArithmeticBinaryFLInstr
             throw new DMLRuntimeException("Unknown opcode in instruction: " + opcode);
         }
 
-        try {
-            super.processMatrixScalarBinaryInstruction(ec);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        //common binary matrix-scalar process instruction
+        super.processMatrixScalarBinaryInstruction(ec);
     }
 
 

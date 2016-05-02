@@ -116,19 +116,18 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
         fec.addLineageDataSet(output.getName(), dataSetVar2);
     }
 
-    protected void processMatrixScalarBinaryInstruction(ExecutionContext ec) throws Exception {
+    protected void processMatrixScalarBinaryInstruction(ExecutionContext ec) throws DMLRuntimeException {
         FlinkExecutionContext fec = (FlinkExecutionContext) ec;
 
-        // get variable names
+        // get input dataset
         String matrixVar = (input1.getDataType() == Expression.DataType.MATRIX) ? input1.getName() : input2.getName();
+        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in = fec.getBinaryBlockDataSetHandleForVariable(matrixVar);
 
         CPOperand scalar = (input1.getDataType() == Expression.DataType.MATRIX) ? input2 : input1;
         ScalarObject constant = ec.getScalarInput(scalar.getName(), scalar.getValueType(), scalar.isLiteral());
         ScalarOperator sc_op = (ScalarOperator) _optr;
         sc_op.setConstant(constant.getDoubleValue());
 
-        //get input
-        DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in = fec.getBinaryBlockDataSetHandleForVariable(matrixVar);
         // apply scalar function element-wise
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = in.map(new MatrixScalarFunction(sc_op));
 

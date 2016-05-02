@@ -25,6 +25,7 @@ import org.apache.sysml.runtime.controlprogram.context.ExecutionContext;
 import org.apache.sysml.runtime.instructions.FLInstructionParser;
 import org.apache.sysml.runtime.instructions.Instruction;
 import org.apache.sysml.runtime.matrix.operators.Operator;
+import org.apache.sysml.utils.Statistics;
 
 public abstract class FLInstruction extends Instruction {
 
@@ -93,4 +94,11 @@ public abstract class FLInstruction extends Instruction {
 
     @Override
     public abstract void processInstruction(ExecutionContext ec) throws DMLRuntimeException;
+
+    @Override
+    public void postprocessInstruction(ExecutionContext ec) throws DMLRuntimeException {
+        Statistics.incrementNoOfExecutedFLInst();
+
+        super.postprocessInstruction(ec);
+    }
 }
