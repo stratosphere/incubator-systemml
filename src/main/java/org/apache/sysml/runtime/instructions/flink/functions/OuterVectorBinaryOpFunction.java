@@ -19,54 +19,23 @@
 
 package org.apache.sysml.runtime.instructions.flink.functions;
 
-import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.matrix.operators.BinaryOperator;
 
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
-public class OuterVectorBinaryOpFunction extends RichFlatMapFunction<Tuple2<MatrixIndexes,MatrixBlock>, Tuple2<MatrixIndexes,MatrixBlock>>
+public class OuterVectorBinaryOpFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes,MatrixBlock>, Tuple2<MatrixIndexes,MatrixBlock>>
 {
 	private static final long serialVersionUID = 1730704346934726826L;
 	
 	private BinaryOperator _op;
-	private HashMap<Long, HashMap<Long, MatrixBlock>> _pmV = null;
 	
 	public OuterVectorBinaryOpFunction(BinaryOperator op) 
 	{
 		_op = op;
-	}
-
-	@Override
-	public void open(Configuration parameters) throws Exception {
-		_pmV = new HashMap<Long, HashMap<Long, MatrixBlock>>();
-
-		Collection<org.apache.flink.api.java.tuple.Tuple2<MatrixIndexes,MatrixBlock>> blocklist = getRuntimeContext().getBroadcastVariable("bcastVar");
-
-		for (org.apache.flink.api.java.tuple.Tuple2<MatrixIndexes,MatrixBlock> broadcastTuple : blocklist){
-			long columnIndex = broadcastTuple.f0.getColumnIndex();
-			long rowIndex = broadcastTuple.f0.getRowIndex();
-
-			HashMap<Long, MatrixBlock> tempMap = _pmV.get(rowIndex);
-			if (tempMap == null) {
-				tempMap = new HashMap<Long, MatrixBlock>();
-			}
-			tempMap.put(columnIndex, broadcastTuple.f1);
-			_pmV.put(rowIndex, tempMap);
-		}
-	}
-
-	public void close() throws Exception {
-		for (Map.Entry<Long,HashMap<Long,MatrixBlock>> e : _pmV.entrySet()) {
-			e.getValue().clear();
-		}
-		_pmV.clear();
 	}
 
 	@Override
@@ -75,7 +44,7 @@ public class OuterVectorBinaryOpFunction extends RichFlatMapFunction<Tuple2<Matr
 	{
 		MatrixBlock resultBlk = null;
 		
-		for(Map.Entry<Long,MatrixBlock> in2 : _pmV.get(1L).entrySet())
+		for(Map.Entry<Long,MatrixBlock> in2 : _pbc.get(1L).entrySet())
 		{
 			resultBlk = (MatrixBlock)arg0.f1.binaryOperations (_op, in2.getValue(), new MatrixBlock());
 			resultBlk.examSparsity();

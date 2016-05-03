@@ -20,11 +20,9 @@
 package org.apache.sysml.runtime.instructions.flink;
 
 
-import org.apache.flink.api.common.functions.RichFlatMapFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
+
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 
 import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
@@ -40,6 +38,8 @@ import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.instructions.flink.functions.FilterNonEmptyBlocksFunction;
 import org.apache.sysml.runtime.instructions.flink.functions.MatrixMultiplicationFunctions;
+import org.apache.sysml.runtime.instructions.flink.functions.RichFlatMapBroadcastFunction;
+import org.apache.sysml.runtime.instructions.flink.functions.RichMapBroadcastFunction;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetAggregateUtils;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
@@ -49,7 +49,6 @@ import org.apache.sysml.runtime.matrix.operators.AggregateBinaryOperator;
 import org.apache.sysml.runtime.matrix.operators.AggregateOperator;
 import org.apache.sysml.runtime.matrix.operators.Operator;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -198,11 +197,10 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	 *
 	 *
 	 */
-	private static class RDDMapMMFunction extends RichMapFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
+	private static class RDDMapMMFunction extends RichMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
 	{
 		private CacheType _type = null;
-		private HashMap<Long, HashMap<Long, MatrixBlock>> _pbc = null;
-
+		
 		//created operator for reuse
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
@@ -215,32 +213,6 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		public RDDMapMMFunction()
 		{
 
-		}
-
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			_pbc = new HashMap<Long, HashMap<Long, MatrixBlock>>();
-
-			Collection<Tuple2<MatrixIndexes,MatrixBlock>> blocklist = getRuntimeContext().getBroadcastVariable("bcastVar");
-
-			for (Tuple2<MatrixIndexes,MatrixBlock> broadcastTuple : blocklist){
-				long columnIndex = broadcastTuple.f0.getColumnIndex();
-				long rowIndex = broadcastTuple.f0.getRowIndex();
-
-				HashMap<Long, MatrixBlock> tempMap = _pbc.get(rowIndex);
-				if (tempMap == null) {
-					tempMap = new HashMap<Long, MatrixBlock>();
-				}
-				tempMap.put(columnIndex, broadcastTuple.f1);
-				_pbc.put(rowIndex, tempMap);
-			}
-		}
-
-		public void close() throws Exception {
-			for (Map.Entry<Long,HashMap<Long,MatrixBlock>> e : _pbc.entrySet()) {
-				e.getValue().clear();
-			}
-			_pbc.clear();
 		}
 
 		@Override
@@ -282,11 +254,10 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	/**
 	 *
 	 */
-	private static class RDDMapMMPartitionFunction extends RichFlatMapFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
+	private static class RDDMapMMPartitionFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
 	{
 		private CacheType _type = null;
-		private HashMap<Long, HashMap<Long, MatrixBlock>> _pbc = null;
-
+		
 		//created operator for reuse
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
@@ -299,32 +270,6 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		public RDDMapMMPartitionFunction()
 		{
 
-		}
-
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			_pbc = new HashMap<Long, HashMap<Long, MatrixBlock>>();
-
-			Collection<Tuple2<MatrixIndexes,MatrixBlock>> blocklist = getRuntimeContext().getBroadcastVariable("bcastVar");
-
-			for (Tuple2<MatrixIndexes,MatrixBlock> broadcastTuple : blocklist){
-				long columnIndex = broadcastTuple.f0.getColumnIndex();
-				long rowIndex = broadcastTuple.f0.getRowIndex();
-
-				HashMap<Long, MatrixBlock> tempMap = _pbc.get(rowIndex);
-				if (tempMap == null) {
-					tempMap = new HashMap<Long, MatrixBlock>();
-				}
-				tempMap.put(columnIndex, broadcastTuple.f1);
-				_pbc.put(rowIndex, tempMap);
-			}
-		}
-
-		public void close() throws Exception {
-			for (Map.Entry<Long,HashMap<Long,MatrixBlock>> e : _pbc.entrySet()) {
-				e.getValue().clear();
-			}
-			_pbc.clear();
 		}
 
 		@Override
@@ -361,11 +306,10 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	 *
 	 *
 	 */
-	private static class RDDFlatMapMMFunction extends RichFlatMapFunction<Tuple2<MatrixIndexes, MatrixBlock>,
+	private static class RDDFlatMapMMFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>,
 		Tuple2<MatrixIndexes, MatrixBlock>> {
 		private CacheType _type = null;
-		private HashMap<Long, HashMap<Long, MatrixBlock>> _pbc = null;
-
+		
 		//created operator for reuse
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
@@ -378,32 +322,6 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		public RDDFlatMapMMFunction()
 		{
 
-		}
-
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			_pbc = new HashMap<Long, HashMap<Long, MatrixBlock>>();
-
-			Collection<Tuple2<MatrixIndexes,MatrixBlock>> blocklist = getRuntimeContext().getBroadcastVariable("bcastVar");
-
-			for (Tuple2<MatrixIndexes,MatrixBlock> broadcastTuple : blocklist){
-				long columnIndex = broadcastTuple.f0.getColumnIndex();
-				long rowIndex = broadcastTuple.f0.getRowIndex();
-
-				HashMap<Long, MatrixBlock> tempMap = _pbc.get(rowIndex);
-				if (tempMap == null) {
-					tempMap = new HashMap<Long, MatrixBlock>();
-				}
-				tempMap.put(columnIndex, broadcastTuple.f1);
-				_pbc.put(rowIndex, tempMap);
-			}
-		}
-
-		public void close() throws Exception {
-			for (Map.Entry<Long,HashMap<Long,MatrixBlock>> e : _pbc.entrySet()) {
-				e.getValue().clear();
-			}
-			_pbc.clear();
 		}
 
 		@Override
