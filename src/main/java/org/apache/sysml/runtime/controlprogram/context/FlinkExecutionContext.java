@@ -19,14 +19,12 @@
 
 package org.apache.sysml.runtime.controlprogram.context;
 
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.sysml.api.DMLScript;
@@ -113,18 +111,18 @@ public class FlinkExecutionContext extends ExecutionContext {
         //FIXME this logic should be in matrix-object (see spark version of this method for more info)
         DataSet<?> dataSet = null;
 
-        //CASE 1: rdd already existing (reuse if checkpoint or trigger
-        //pending rdd operations if not yet cached but prevent to re-evaluate
-        //rdd operations if already executed and cached
+        //CASE 1: dataset already existing (reuse if checkpoint or trigger
+        //pending dataset operations if not yet cached but prevent to re-evaluate
+        //dataset operations if already executed and cached
         if (mo.getDataSetHandle() != null
                 && (mo.getDataSetHandle().isCheckpointed() || !mo.isCached(false))) {
-            //return existing rdd handling (w/o input format change)
+            //return existing dataset handling (w/o input format change)
             dataSet = mo.getDataSetHandle().getDataSet();
         }
-        //CASE 2: dirty in memory data or cached result of rdd operations
+        //CASE 2: dirty in memory data or cached result of dataset operations
         else if (mo.isDirty() || mo.isCached(false)) {
             //get in-memory matrix block and parallelize it
-            //w/ guarded parallelize (fallback to export, rdd from file if too large)
+            //w/ guarded parallelize (fallback to export, dataset from file if too large)
             boolean fromFile = false;
             // TODO (see spark case for large matrices)
 
@@ -134,7 +132,7 @@ public class FlinkExecutionContext extends ExecutionContext {
             mo.release(); //unpin matrix
 
 
-            //keep rdd handle for future operations on it
+            //keep dataset handle for future operations on it
             DataSetObject dshandle = new DataSetObject(dataSet, mo.getVarName());
             dshandle.setHDFSFile(fromFile);
             mo.setDataSetHandle(dshandle);
@@ -147,8 +145,6 @@ public class FlinkExecutionContext extends ExecutionContext {
             if (inputInfo == InputInfo.BinaryBlockInputInfo) {
                 dataSet = IOUtils.hadoopFile(getFlinkContext(), mo.getFileName(), inputInfo.inputFormatClass,
                         inputInfo.inputKeyClass, inputInfo.inputValueClass);
-                //note: this copy is still required in Spark 1.4 because spark hands out whatever the inputformat
-                //recordreader returns; the javadoc explicitly recommend to copy all key/value pairs
                 dataSet = ((DataSet<Tuple2<MatrixIndexes, MatrixBlock>>) dataSet).map(
                         new CopyBlockPairFunction()); //cp is workaround for read bug
             } else if (inputInfo == InputInfo.TextCellInputInfo || inputInfo == InputInfo.CSVInputInfo || inputInfo == InputInfo.MatrixMarketInputInfo) {
@@ -162,7 +158,7 @@ public class FlinkExecutionContext extends ExecutionContext {
                 dataSet = ((DataSet<Tuple2<MatrixIndexes, MatrixCell>>) dataSet).map(
                         new CopyBinaryCellFunction()); //cp is workaround for read bug
             } else {
-                throw new DMLRuntimeException("Incorrect input format in getRDDHandleForVariable");
+                throw new DMLRuntimeException("Incorrect input format in getDatasetHandleForVariable");
             }
 
             //keep dataset handle for future operations on it
@@ -178,7 +174,7 @@ public class FlinkExecutionContext extends ExecutionContext {
     }
 
     /**
-     * Utility method for creating an RDD out of an in-memory matrix block.
+     * Utility method for creating an dataset out of an in-memory matrix block.
      *
      * @param env
      * @param src
@@ -225,7 +221,7 @@ public class FlinkExecutionContext extends ExecutionContext {
      * @param oinfo
      */
     @SuppressWarnings("unchecked")
-    public static long writeDataSetToHDFS(DataSetObject dataset, String path, OutputInfo oinfo) {
+    public static long writeDataSetToHDFS(DataSetObject dataset, String path, OutputInfo oinfo) throws DMLRuntimeException{
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> ldataset = (DataSet<Tuple2<MatrixIndexes, MatrixBlock>>) dataset.getDataSet();
 
         //recompute nnz
@@ -244,7 +240,7 @@ public class FlinkExecutionContext extends ExecutionContext {
 
     /**
      * This method is a generic abstraction for calls from the buffer pool.
-     * See toMatrixBlock(JavaPairRDD<MatrixIndexes,MatrixBlock> rdd, int numRows, int numCols);
+     * See toMatrixBlock(DataSet<Tuple2<MatrixIndexes,MatrixBlock>> dataset, int numRows, int numCols);
      *
      * @param dataset
      * @param numRows
@@ -359,7 +355,7 @@ public class FlinkExecutionContext extends ExecutionContext {
     }
 
     /**
-     * Utility method for creating a single matrix block out of a binary cell RDD.
+     * Utility method for creating a single matrix block out of a binary cell dataset.
      * Note that this collect call might trigger execution of any pending transformations.
      *
      * @param dataset
@@ -387,7 +383,7 @@ public class FlinkExecutionContext extends ExecutionContext {
         try {
             list = dataset.collect();
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new DMLRuntimeException(e);
         }
 
         //copy blocks one-at-a-time into output matrix block
@@ -415,22 +411,30 @@ public class FlinkExecutionContext extends ExecutionContext {
         return out;
     }
 
+    /**
+     * This is a wrapper for flink execute() method. It has to becalled to trigger the execution of remaining
+     * dataflows. Since we currently don't know if a flink dataflow is constructed (e.g. in hybrid_flink mode),
+     * a call to execute leads to an error if no sinks are defined.
+     */
     public void execute() {
         // FIXME track number of sinks
         // HACK ALERT !!!
         try {
             _execEnv.execute();
         } catch (Exception e) {
-            System.out.println("Find a better solution");
+            System.out.println("Called execute() without defined sinks. Find a better solution");
         }
     }
 
 	/**
-	 * Returns the available memory budget for broadcast variables in bytes.
-	 * In detail, this takes into account the total executor memory as well
-	 * as relative ratios for data and shuffle. Note, that this is a conservative
-	 * estimate since both data memory and shuffle memory might not be fully
-	 * utilized. 
+	 * Flink reserves a fixed size of heap memory for operators (sort, hashing, ...).
+     * This memory is not available for broadcast and user object. In some cases SystemML creates large buffers.
+     * The problem is that flink statically assigns the remaining memory to every running task per slot.
+     * This can lead to the situation in which not enough memory for the buffers remains (even though the statically
+     * reserved Flink-part is not completely occupied).
+     *
+     * It is not easy to get the configuration parameters from Flink and to read taskmanager configuration.
+     * Therefore, we use a very conservative estimation based on Flink's default setting.
 	 *
 	 * @return
 	 */
@@ -441,7 +445,7 @@ public class FlinkExecutionContext extends ExecutionContext {
         double maxMem = runtime.totalMemory() - (runtime.totalMemory() * 0.75);
 
         // TODO should we call the gc here to get a better estimate?
-        // get the free memory - at this point Flink has already allocated the managed memory statically
+        // get the free memory - at this point Flink might not have allocated all operator memory since this can happen lazily
         return (long) (OptimizerUtils.MEM_UTIL_FACTOR  * maxMem);
 	}
 
@@ -461,7 +465,6 @@ public class FlinkExecutionContext extends ExecutionContext {
 
     // FIXME this method does not fully work right now since we cannot parse the configuration without a Jobmanager running
     public static void analyzeFlinkConfiguration(ExecutionConfig conf) {
-
 
         Map<String, String> parameters = conf.getGlobalJobParameters().toMap();
 
@@ -490,51 +493,4 @@ public class FlinkExecutionContext extends ExecutionContext {
         int networkBufferSize = Integer.parseInt(parameters.getOrDefault("taskmanager.network.bufferSizeInBytes", "32768"));
         _memNetworkBuffers = numNetworkBuffers * networkBufferSize;
     }
-
-
-	/**
-	 *
-	 */
-	/*
-	public static void analyzeSparkConfiguation()
-	{
-		SparkConf sconf = new SparkConf();
-
-		//parse absolute executor memory
-		String tmp = sconf.get("spark.executor.memory", "512m");
-		if ( tmp.endsWith("g") || tmp.endsWith("G") )
-			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-1)) * 1024 * 1024 * 1024;
-		else if ( tmp.endsWith("m") || tmp.endsWith("M") )
-			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-1)) * 1024 * 1024;
-		else if( tmp.endsWith("k") || tmp.endsWith("K") )
-			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-1)) * 1024;
-		else
-			_memExecutors = Long.parseLong(tmp.substring(0,tmp.length()-2));
-
-		//get data and shuffle memory ratios (defaults not specified in job conf)
-		_memRatioData = sconf.getDouble("spark.storage.memoryFraction", 0.6); //default 60%
-		_memRatioShuffle = sconf.getDouble("spark.shuffle.memoryFraction", 0.2); //default 20%
-
-		int numExecutors = sconf.getInt("spark.executor.instances", -1);
-		int numCoresPerExec = sconf.getInt("spark.executor.cores", -1);
-		int defaultPar = sconf.getInt("spark.default.parallelism", -1);
-
-		if( numExecutors > 1 && (defaultPar > 1 || numCoresPerExec > 1) ) {
-			_numExecutors = numExecutors;
-			_defaultPar = (defaultPar>1) ? defaultPar : numExecutors * numCoresPerExec;
-			_confOnly = true;
-		}
-		else {
-			//get default parallelism (total number of executors and cores)
-			//note: spark context provides this information while conf does not
-			//(for num executors we need to correct for driver and local mode)
-			JavaSparkContext jsc = getSparkContextStatic();
-			_numExecutors = Math.max(jsc.sc().getExecutorMemoryStatus().size() - 1, 1);
-			_defaultPar = jsc.defaultParallelism();
-			_confOnly = false; //implies env info refresh w/ spark context 
-		}
-
-		//note: required time for infrastructure analysis on 5 node cluster: ~5-20ms. 
-	}*/
-
 }
