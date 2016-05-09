@@ -50,7 +50,7 @@ public class FlinkUtils {
                 list.add(new Tuple2<MatrixIndexes, MatrixBlock>(ix, mb));
             }
 
-        //create rdd of in-memory list
+        //create dataset of in-memory list
         return env.fromCollection(list);
     }
 }

@@ -26,6 +26,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.apache.sysml.lops.MapMultChain;
 import org.apache.sysml.lops.PartialAggregate;
+import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.functionobjects.KahanPlus;
 import org.apache.sysml.runtime.functionobjects.Multiply;
 import org.apache.sysml.runtime.functionobjects.Plus;
@@ -62,7 +63,9 @@ public final class MatrixMultiplicationFunctions {
         @Override
         public Tuple2<MatrixIndexes, MatrixBlock> join(Tuple2<MatrixIndexes, MatrixBlock> first,
                                                        Tuple2<MatrixIndexes, MatrixBlock> second) throws Exception {
-            assert second.f0.getRowIndex() == first.f0.getColumnIndex() : "Indices do not match";
+            if (second.f0.getRowIndex() != first.f0.getColumnIndex())
+                throw new DMLRuntimeException("Dimension mismatch!");
+
             output.f0 = new MatrixIndexes(first.f0.getRowIndex(), second.f0.getColumnIndex());
             output.f1 = new MatrixBlock();
             first.f1.aggregateBinaryOperations(first.f1, second.f1, output.f1, operation);
@@ -100,7 +103,8 @@ public final class MatrixMultiplicationFunctions {
 
         @Override
         public Tuple2<MatrixIndexes, MatrixBlock> map(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
-            assert value.f1.getNumColumns() == v.getNumRows() : "Indices do not match";
+            if (value.f1.getNumColumns() != v.getNumRows())
+                throw new DMLRuntimeException("Dimension mismatch!");
             output.f1 = value.f1.chainMatrixMultOperations(v, null, output.f1, type);
             return output;
         }
@@ -142,7 +146,8 @@ public final class MatrixMultiplicationFunctions {
         @Override
         public Tuple2<MatrixIndexes, MatrixBlock> join(Tuple2<MatrixIndexes, MatrixBlock> x,
                                                        Tuple2<MatrixIndexes, MatrixBlock> w) throws Exception {
-            assert x.f1.getNumColumns() == v.getNumRows() : "Indices do not match";
+            if (x.f1.getNumColumns() != v.getNumRows())
+                throw new DMLRuntimeException("Dimension mismatch!");
             output.f1 = x.f1.chainMatrixMultOperations(v, w.f1, output.f1, type);
             return output;
         }
@@ -160,7 +165,8 @@ public final class MatrixMultiplicationFunctions {
         @Override
         public Tuple2<MatrixIndexes, MatrixBlock> reduce(Tuple2<MatrixIndexes, MatrixBlock> left,
                                                          Tuple2<MatrixIndexes, MatrixBlock> right) throws Exception {
-            assert left.f0.equals(right.f0) : "Indices do not match";
+            if (left.f0 != right.f0)
+                throw new DMLRuntimeException("Dimension mismatch!");
             output.f0 = left.f0;
             output.f1 = new MatrixBlock();
             left.f1.binaryOperations(plus, right.f1, output.f1);

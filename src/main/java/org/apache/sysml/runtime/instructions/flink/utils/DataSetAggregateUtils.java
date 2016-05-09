@@ -19,7 +19,6 @@
 
 package org.apache.sysml.runtime.instructions.flink.utils;
 
-import org.apache.flink.api.common.functions.GroupCombineFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.functions.RichGroupCombineFunction;
@@ -59,15 +58,13 @@ public class DataSetAggregateUtils {
 	 * @param in
 	 * @return
 	 */
-	public static MatrixBlock sumStable1( DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in ) {
+	public static MatrixBlock sumStable1( DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in ) throws DMLRuntimeException {
 		try {
 			return (MatrixBlock) in.map(new DataSetConverterUtils.ExtractElement(1)).returns(MatrixBlock.class).reduce(
 				new SumSingleBlockFunction() ).collect().get(0);
 		} catch (Exception e) {
-			e.printStackTrace();
+			throw new DMLRuntimeException("Could not collect final block of " + in);
 		}
-
-		return null;
 	}
 
 	/**
@@ -289,12 +286,11 @@ public class DataSetAggregateUtils {
 	 * @param input
 	 * @return
 	 */
-	public static long computeNNZFromBlocks(DataSet<Tuple2<MatrixIndexes, MatrixBlock>> input) {
+	public static long computeNNZFromBlocks(DataSet<Tuple2<MatrixIndexes, MatrixBlock>> input) throws DMLRuntimeException {
 		try {
 			return (long) input.map(new ComputeBinaryBlockNnzFunction()).sum(0).collect().get(0).f0.longValue();
 		} catch (Exception e) {
-			e.printStackTrace();
-			return 0;
+			throw new DMLRuntimeException("Could not collect final block of " + input);
 		}
 	}
 }

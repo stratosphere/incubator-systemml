@@ -32,7 +32,6 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.sysml.hops.OptimizerUtils;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.context.FlinkExecutionContext;
 import org.apache.sysml.runtime.io.IOUtilFunctions;
@@ -66,7 +65,7 @@ public class DataSetConverterUtils {
                                                                                     MatrixCharacteristics mcOut,
                                                                                     boolean outputEmptyBlocks)
             throws DMLRuntimeException {
-        //convert textcell rdd to binary block rdd (w/ partial blocks)
+        //convert textcell dataset to binary block dataset (w/ partial blocks)
         DataSet<Text> temp = input.map(new ExtractElement(1)).returns(Text.class);
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = temp.mapPartition(new TextToBinaryBlockFunction(mcOut));
 
@@ -97,7 +96,7 @@ public class DataSetConverterUtils {
                                                                                       MatrixCharacteristics mcOut,
                                                                                       boolean outputEmptyBlocks)
             throws DMLRuntimeException {
-        //convert binarycell rdd to binary block rdd (w/ partial blocks)
+        //convert binarycell dataset to binary block dataset (w/ partial blocks)
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = input
                 .mapPartition(new BinaryCellToBinaryBlockFunction(mcOut));
 
@@ -140,7 +139,7 @@ public class DataSetConverterUtils {
 
         // zip with row id
         DataSet<Tuple2<Long, String>> indexed = IndexUtils.zipWithRowIndex(input);
-        //convert to binary block rdd (w/ partial blocks)
+        //convert to binary block dataset (w/ partial blocks)
         DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = indexed.mapPartition(
                 new CSVToBinaryBlockFunction(mcOut, delim, fill, fillValue));
         //aggregate partial matrix blocks

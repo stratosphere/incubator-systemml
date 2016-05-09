@@ -19,9 +19,6 @@ import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.matrix.operators.Operator;
 import org.apache.sysml.runtime.matrix.operators.ReorgOperator;
 
-/**
- * Created by carabolic on 21/04/16.
- */
 public class ReorgFLInstruction extends UnaryFLInstruction {
 
         //sort-specific attributes (to enable variable attributes)
@@ -91,7 +88,7 @@ public class ReorgFLInstruction extends UnaryFLInstruction {
             FlinkExecutionContext sec = (FlinkExecutionContext) ec;
             String opcode = getOpcode();
 
-            //get input rdd handle
+            //get input dataset handle
             DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in1 = sec.getBinaryBlockDataSetHandleForVariable( input1.getName() );
             DataSet<Tuple2<MatrixIndexes,MatrixBlock>> out = null;
             MatrixCharacteristics mcIn = sec.getMatrixCharacteristics(input1.getName());
@@ -105,59 +102,20 @@ public class ReorgFLInstruction extends UnaryFLInstruction {
             {
                 throw new UnsupportedOperationException();
                 //execute reverse reorg operation
-//                out = in1.flatMapToPair(new RDDRevFunction(mcIn));
-//                if( mcIn.getRows() % mcIn.getRowsPerBlock() != 0 )
-//                    out = RDDAggregateUtils.mergeByKey(out);
             }
             else if ( opcode.equalsIgnoreCase("rdiag") ) // DIAG
             {
                 throw new UnsupportedOperationException();
-//                if(mcIn.getCols() == 1) { // diagV2M
-//                    out = in1.flatMapToPair(new RDDDiagV2MFunction(mcIn));
-//                }
-//                else { // diagM2V
-//                    //execute diagM2V operation
-//                    out = in1.filter(new FilterDiagBlocksFunction())
-//                            .mapToPair(new ReorgMapFunction(opcode));
-//                }
             }
             else if ( opcode.equalsIgnoreCase("rsort") ) //ORDER
             {
                 throw new UnsupportedOperationException();
-//                // Sort by column 'col' in ascending/descending order and return either index/value
-//
-//                //get parameters
-//                long col = ec.getScalarInput(_col.getName(), _col.getValueType(), _col.isLiteral()).getLongValue();
-//                boolean desc = ec.getScalarInput(_desc.getName(), _desc.getValueType(), _desc.isLiteral()).getBooleanValue();
-//                boolean ixret = ec.getScalarInput(_ixret.getName(), _ixret.getValueType(), _ixret.isLiteral()).getBooleanValue();
-//                boolean singleCol = (mcIn.getCols() == 1);
-//
-//                // extract column (if necessary) and sort
-//                out = in1;
-//                if( !singleCol ){
-//                    out = out.filter(new IsBlockInRange(1, mcIn.getRows(), col, col, mcIn))
-//                            .mapValues(new ExtractColumn((int) UtilFunctions.computeCellInBlock(col, mcIn.getColsPerBlock())));
-//                }
-//
-//                //actual index/data sort operation
-//                if( ixret ) { //sort indexes
-//                    out = RDDSortUtils.sortIndexesByVal(out, !desc, mcIn.getRows(), mcIn.getRowsPerBlock());
-//                }
-//                else if( singleCol && !desc) { //sort single-column matrix
-//                    out = RDDSortUtils.sortByVal(out, mcIn.getRows(), mcIn.getRowsPerBlock());
-//                }
-//                else { //sort multi-column matrix
-//                    if (! _bSortIndInMem)
-//                        out = RDDSortUtils.sortDataByVal(out, in1, !desc, mcIn.getRows(), mcIn.getCols(), mcIn.getRowsPerBlock(), mcIn.getColsPerBlock());
-//                    else
-//                        out = RDDSortUtils.sortDataByValMemSort(out, in1, !desc, mcIn.getRows(), mcIn.getCols(), mcIn.getRowsPerBlock(), mcIn.getColsPerBlock(), sec, (ReorgOperator) _optr);
-//                }
             }
             else {
-                throw new DMLRuntimeException("Error: Incorrect opcode in ReorgSPInstruction:" + opcode);
+                throw new DMLRuntimeException("Error: Incorrect opcode in ReorgFLInstruction:" + opcode);
             }
 
-            //store output rdd handle
+            //store output dataset handle
             updateReorgMatrixCharacteristics(sec);
             sec.setDataSetHandleForVariable(output.getName(), out);
             sec.addLineageDataSet(output.getName(), input1.getName());
@@ -199,105 +157,6 @@ public class ReorgFLInstruction extends UnaryFLInstruction {
                     mcOut.setNonZeros(mc1.getNonZeros());
             }
         }
-
-        /**
-         *
-         */
-//        private static class RDDDiagV2MFunction implements PairFlatMapFunction<Tuple2<MatrixIndexes, MatrixBlock>, MatrixIndexes, MatrixBlock>
-//        {
-//            private static final long serialVersionUID = 31065772250744103L;
-//
-//            private ReorgOperator _reorgOp = null;
-//            private MatrixCharacteristics _mcIn = null;
-//
-//            public RDDDiagV2MFunction(MatrixCharacteristics mcIn)
-//                    throws DMLRuntimeException
-//            {
-//                _reorgOp = new ReorgOperator(DiagIndex.getDiagIndexFnObject());
-//                _mcIn = mcIn;
-//            }
-//
-//            @Override
-//            public Iterable<Tuple2<MatrixIndexes, MatrixBlock>> call( Tuple2<MatrixIndexes, MatrixBlock> arg0 )
-//                    throws Exception
-//            {
-//                ArrayList<Tuple2<MatrixIndexes, MatrixBlock>> ret = new ArrayList<Tuple2<MatrixIndexes,MatrixBlock>>();
-//
-//                MatrixIndexes ixIn = arg0._1();
-//                MatrixBlock blkIn = arg0._2();
-//
-//                //compute output indexes and reorg data
-//                long rix = ixIn.getRowIndex();
-//                MatrixIndexes ixOut = new MatrixIndexes(rix, rix);
-//                MatrixBlock blkOut = (MatrixBlock) blkIn.reorgOperations(_reorgOp, new MatrixBlock(), -1, -1, -1);
-//                ret.add(new Tuple2<MatrixIndexes, MatrixBlock>(ixOut,blkOut));
-//
-//                // insert newly created empty blocks for entire row
-//                int numBlocks = (int) Math.ceil((double)_mcIn.getRows()/_mcIn.getRowsPerBlock());
-//                for(int i = 1; i <= numBlocks; i++) {
-//                    if(i != ixOut.getColumnIndex()) {
-//                        int lrlen = UtilFunctions.computeBlockSize(_mcIn.getRows(), rix, _mcIn.getRowsPerBlock());
-//                        int lclen = UtilFunctions.computeBlockSize(_mcIn.getRows(), i, _mcIn.getRowsPerBlock());
-//                        MatrixBlock emptyBlk = new MatrixBlock(lrlen, lclen, true);
-//                        ret.add(new Tuple2<MatrixIndexes, MatrixBlock>(new MatrixIndexes(rix, i), emptyBlk));
-//                    }
-//                }
-//
-//                return ret;
-//            }
-//        }
-
-        /**
-         *
-         */
-//        private static class RDDRevFunction implements PairFlatMapFunction<Tuple2<MatrixIndexes, MatrixBlock>, MatrixIndexes, MatrixBlock>
-//        {
-//            private static final long serialVersionUID = 1183373828539843938L;
-//
-//            private MatrixCharacteristics _mcIn = null;
-//
-//            public RDDRevFunction(MatrixCharacteristics mcIn)
-//                    throws DMLRuntimeException
-//            {
-//                _mcIn = mcIn;
-//            }
-//
-//            @Override
-//            public Iterable<Tuple2<MatrixIndexes, MatrixBlock>> call( Tuple2<MatrixIndexes, MatrixBlock> arg0 )
-//                    throws Exception
-//            {
-//                //construct input
-//                IndexedMatrixValue in = SparkUtils.toIndexedMatrixBlock(arg0);
-//
-//                //execute reverse operation
-//                ArrayList<IndexedMatrixValue> out = new ArrayList<IndexedMatrixValue>();
-//                LibMatrixReorg.rev(in, _mcIn.getRows(), _mcIn.getRowsPerBlock(), out);
-//
-//                //construct output
-//                return SparkUtils.fromIndexedMatrixBlock(out);
-//            }
-//        }
-
-        /**
-         *
-         */
-//        private static class ExtractColumn implements Function<MatrixBlock, MatrixBlock>
-//        {
-//            private static final long serialVersionUID = -1472164797288449559L;
-//
-//            private int _col;
-//
-//            public ExtractColumn(int col) {
-//                _col = col;
-//            }
-//
-//            @Override
-//            public MatrixBlock call(MatrixBlock arg0)
-//                    throws Exception
-//            {
-//                return arg0.sliceOperations(0, arg0.getNumRows()-1, _col, _col, new MatrixBlock());
-//            }
-//        }
     }
 
 
