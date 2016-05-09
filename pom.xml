@@ -716,18 +716,28 @@
 			<artifactId>flink-java</artifactId>
 			<version>${flink.version}</version>
 			<scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.servlet</groupId>
-                    <artifactId>servlet-api</artifactId>
-                </exclusion>
-            </exclusions>
+			<exclusions>
+				<exclusion>
+						<groupId>javax.servlet</groupId>
+						<artifactId>servlet-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.flink</groupId>
+					<artifactId>flink-shaded-hadoop2</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-clients_${scala.binary.version}</artifactId>
 			<version>${flink.version}</version>
 			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.flink</groupId>
+					<artifactId>flink-shaded-hadoop2</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<dependency>
