@@ -21,7 +21,13 @@ package org.apache.sysml.runtime.instructions.flink.utils;
 
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.accumulators.LongCounter;
-import org.apache.flink.api.common.functions.*;
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.MapPartitionFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.functions.RichMapPartitionFunction;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -467,12 +473,11 @@ public class DataSetConverterUtils {
             _brlen = mc.getRowsPerBlock();
             _bclen = mc.getColsPerBlock();
 
-            ctx = getRuntimeContext();
-            int numSlots = ctx.getNumberOfParallelSubtasks();
-
-            long freeMemory = FlinkExecutionContext.getBroadcastMemoryBudget();
+            int numSlots = getRuntimeContext().getNumberOfParallelSubtasks();
+            long freeMemory = FlinkExecutionContext.getUDFMemoryBudget();
 
             // in flink, each slot only has limited memory - we have to dynamically set the buffer size so that we don't run out of memory
+            // udf memory budget / number of slots / longs / 3 dimensional buffer
             int numElems = (int) ((freeMemory / numSlots) / 8) / 3;
 
             //determine upper bounded buffer len

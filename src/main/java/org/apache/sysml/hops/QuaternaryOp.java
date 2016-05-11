@@ -587,7 +587,7 @@ public class QuaternaryOp extends Hop implements MultiThreadedHop
 		//Notes: Any broadcast needs to fit twice in local memory because we partition the input in cp,
 		//and needs to fit once in executor broadcast memory. The 2GB broadcast constraint is no longer
 		//required because the max_int byte buffer constraint has been fixed in Spark 1.4 
-		double memBudgetExec = FlinkExecutionContext.getBroadcastMemoryBudget();
+		double memBudgetExec = FlinkExecutionContext.getUDFMemoryBudget();
 		double memBudgetLocal = OptimizerUtils.getLocalMemBudget();
 
 		Hop X = getInput().get(0);

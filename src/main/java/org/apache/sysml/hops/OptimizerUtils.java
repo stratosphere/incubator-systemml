@@ -440,7 +440,7 @@ public class OptimizerUtils
 	 */
 	public static boolean checkFlinkBroadcastMemoryBudget( double size )
 	{
-		double memBudgetExec = FlinkExecutionContext.getBroadcastMemoryBudget(); //TODO: change this
+		double memBudgetExec = FlinkExecutionContext.getUDFMemoryBudget(); //TODO: change this
 		double memBudgetLocal = OptimizerUtils.getLocalMemBudget();
 
 		//basic requirement: the broadcast needs to to fit once in the remote broadcast memory 
@@ -450,7 +450,7 @@ public class OptimizerUtils
 	}
 
 	public static boolean checkFlinkBroadcastMemoryBudget(long rlen, long clen, long brlen, long bclen, long nnz) {
-		double memBudgetExec = FlinkExecutionContext.getBroadcastMemoryBudget();
+		double memBudgetExec = FlinkExecutionContext.getUDFMemoryBudget();
 		double memBudgetLocal = OptimizerUtils.getLocalMemBudget();
 
 		double sp = getSparsity(rlen, clen, nnz);

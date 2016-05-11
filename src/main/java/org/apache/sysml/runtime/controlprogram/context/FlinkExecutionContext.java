@@ -25,10 +25,11 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.sysml.api.DMLScript;
-import org.apache.sysml.hops.OptimizerUtils;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.Program;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
@@ -38,7 +39,11 @@ import org.apache.sysml.runtime.instructions.flink.functions.CopyBlockPairFuncti
 import org.apache.sysml.runtime.instructions.flink.functions.CopyTextInputFunction;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetAggregateUtils;
 import org.apache.sysml.runtime.instructions.flink.utils.IOUtils;
-import org.apache.sysml.runtime.matrix.data.*;
+import org.apache.sysml.runtime.matrix.data.InputInfo;
+import org.apache.sysml.runtime.matrix.data.MatrixBlock;
+import org.apache.sysml.runtime.matrix.data.MatrixCell;
+import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
+import org.apache.sysml.runtime.matrix.data.OutputInfo;
 import org.apache.sysml.utils.Statistics;
 
 import java.util.LinkedList;
@@ -46,6 +51,10 @@ import java.util.List;
 import java.util.Map;
 
 public class FlinkExecutionContext extends ExecutionContext {
+
+    // fraction of memory the unmanaged memory that should be used as upper bound
+    // when allocating, e.g. buffers for matrix blocks, in UDFs
+    private static final double USER_MEMORY_FRACTION = 0.9;
 
 	//executor memory and relative fractions as obtained from the flink configuration
 	private static long _memTaskManagerTotal = -1; // total heap memory per taskmanager
@@ -60,6 +69,7 @@ public class FlinkExecutionContext extends ExecutionContext {
     private static final Log LOG = LogFactory.getLog(FlinkExecutionContext.class.getName());
 
     private static ExecutionEnvironment _execEnv = null;
+
 
     protected FlinkExecutionContext(Program prog) {
         this(true, prog);
@@ -438,15 +448,30 @@ public class FlinkExecutionContext extends ExecutionContext {
 	 *
 	 * @return
 	 */
-	public static long getBroadcastMemoryBudget() {
 
-        Runtime runtime = Runtime.getRuntime();
+    /**
+     * Returns an estimated upper bound of the memory (in bytes) available in a task manager's user space (UDFs).
+     *
+     * Flink manages its on memory for certain operations (sorting, hashing, ...). Therefore,
+     * it allocates a fraction of the currently available heap memory (default) on the task manager startup.
+     * This fraction can lazily grow up to a (user) defined limit of the heap. As we can not access the
+     * concrete memory settings easily, this method returns a conservative fraction ({@link #USER_MEMORY_FRACTION})
+     * of the memory not managed by Flink (maximal fraction of memory that can be allocated by Flink).
+     *
+     * NOTE: The available estimate returned is SHARED among all slots in a task manager! To get a max. estimate
+     * for a single slot, this value has to be divided by the number of slots.
+     *
+     *
+     * @return an estimated upper bound of memory (in bytes) available in a task manager's user space (UDFs).
+     */
+	public static long getUDFMemoryBudget() {
+        long freeMemory           = EnvironmentInformation.getSizeOfFreeHeapMemoryWithDefrag();
         // FIXME the 0.7 here is flinks default for static memory allocation - should be read from the config
-        double maxMem = runtime.totalMemory() - (runtime.totalMemory() * 0.75);
+        // As we can not get the set value, we rely on the default...
+        double flinkManagedMemory = freeMemory * ConfigConstants.DEFAULT_MEMORY_MANAGER_MEMORY_FRACTION;
+        double maxFreeMemory      = freeMemory - flinkManagedMemory;
 
-        // TODO should we call the gc here to get a better estimate?
-        // get the free memory - at this point Flink might not have allocated all operator memory since this can happen lazily
-        return (long) (OptimizerUtils.MEM_UTIL_FACTOR  * maxMem);
+        return (long) (maxFreeMemory * USER_MEMORY_FRACTION);
 	}
 
     /**
