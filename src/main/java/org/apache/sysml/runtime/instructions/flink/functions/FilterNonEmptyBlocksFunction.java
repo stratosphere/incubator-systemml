@@ -34,7 +34,7 @@ public class FilterNonEmptyBlocksFunction implements FilterFunction<Tuple2<Matri
 	public boolean filter(Tuple2<MatrixIndexes, MatrixBlock> arg0)
 		throws Exception 
 	{
-		//always keep 1-1 block in order to prevent empty rdds
+		//always keep 1-1 block in order to prevent empty datasets
 		boolean ix1 = (arg0.f0.getRowIndex()==1 
 				&& arg0.f0.getColumnIndex()==1);
 		

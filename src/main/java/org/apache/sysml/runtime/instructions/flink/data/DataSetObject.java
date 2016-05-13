@@ -26,7 +26,7 @@ public class DataSetObject extends LineageObject {
 
     private DataSet<?> _dsHandle = null;
 
-    //meta data on origin of given rdd handle
+    //meta data on origin of given dataset handle
     private boolean _checkpointed = false; //created via checkpoint instruction
     private boolean _hdfsfile = false;     //created from hdfs file
     private String _hdfsFname = null;     //hdfs filename, if created from hdfs.

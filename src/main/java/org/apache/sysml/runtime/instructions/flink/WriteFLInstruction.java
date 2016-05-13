@@ -181,9 +181,9 @@ public class WriteFLInstruction extends FLInstruction {
             } else {
                 /// This case is applicable when the CSV output from transform() is written out
                 @SuppressWarnings("unchecked")
-                DataSet<Tuple2<Long, String>> rdd = (DataSet<Tuple2<Long, String>>) ((MatrixObject) flec.getVariable(
+                DataSet<Tuple2<Long, String>> dataset = (DataSet<Tuple2<Long, String>>) ((MatrixObject) flec.getVariable(
                         input1.getName())).getDataSetHandle().getDataSet();
-                out = rdd.map(new DataSetConverterUtils.ExtractElement<Tuple2<Long, String>, String>(1)).returns(
+                out = dataset.map(new DataSetConverterUtils.ExtractElement<Tuple2<Long, String>, String>(1)).returns(
                         String.class);
 
                 String sep = ",";
@@ -218,7 +218,7 @@ public class WriteFLInstruction extends FLInstruction {
                 nnz = DataSetAggregateUtils.computeNNZFromBlocks(in1);
             }
 
-            //save binary block rdd on hdfs
+            //save binary block dataset on hdfs
             IOUtils.saveAsHadoopFile(in1, fname, MatrixIndexes.class, MatrixBlock.class,
                     SequenceFileOutputFormat.class);
 
@@ -256,7 +256,7 @@ public class WriteFLInstruction extends FLInstruction {
                 //MapReduceTool.mergeIntoSingleFile(randFName, fname); // Faster version :)
                 //TODO: how do we merge the files??
 
-                // rdd.coalesce(1, true).saveAsTextFile(randFName);
+                // dataset.coalesce(1, true).saveAsTextFile(randFName);
                 // MapReduceTool.copyFileOnHDFS(randFName + "/part-00000", fname);
             } catch (Exception e) {
                 throw new DMLRuntimeException("Cannot merge the output into single file: " + e.getMessage());

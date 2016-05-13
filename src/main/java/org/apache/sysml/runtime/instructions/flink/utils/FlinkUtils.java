@@ -35,7 +35,7 @@ public class FlinkUtils {
      * @param mc
      * @return
      */
-    public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> getEmptyBlockRDD(ExecutionEnvironment env,
+    public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> getEmptyBlockDataSet(ExecutionEnvironment env,
                                                                                MatrixCharacteristics mc) {
         //create all empty blocks
         ArrayList<Tuple2<MatrixIndexes, MatrixBlock>> list = new ArrayList<Tuple2<MatrixIndexes, MatrixBlock>>();

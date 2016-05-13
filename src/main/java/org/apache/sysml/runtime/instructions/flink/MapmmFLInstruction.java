@@ -111,13 +111,13 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	{
 		FlinkExecutionContext flec = (FlinkExecutionContext)ec;
 
-		String rddVar = (_type==CacheType.LEFT) ? input2.getName() : input1.getName();
+		String datasetVar = (_type==CacheType.LEFT) ? input2.getName() : input1.getName();
 		String bcastVar = (_type==CacheType.LEFT) ? input1.getName() : input2.getName();
-		MatrixCharacteristics mcRdd = flec.getMatrixCharacteristics(rddVar);
+		MatrixCharacteristics mcDataSet = flec.getMatrixCharacteristics(datasetVar);
 		MatrixCharacteristics mcBc = flec.getMatrixCharacteristics(bcastVar);
 
 		//get inputs
-		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in1 = flec.getBinaryBlockDataSetHandleForVariable( rddVar );
+		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in1 = flec.getBinaryBlockDataSetHandleForVariable( datasetVar );
 
 		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> in2 = flec.getBinaryBlockDataSetHandleForVariable(bcastVar);
 
@@ -128,13 +128,13 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		//execute mapmult instruction
 		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> out = null;
 		if( requiresFlatMapFunction(_type, mcBc) ) {
-			out = in1.flatMap(new RDDFlatMapMMFunction(_type)).withBroadcastSet(in2, "bcastVar");
+			out = in1.flatMap(new DataSetFlatMapMMFunction(_type)).withBroadcastSet(in2, "bcastVar");
 		}
-		else if( preservesPartitioning(mcRdd, _type) ) {
-			out = in1.flatMap(new RDDMapMMPartitionFunction(_type)).withBroadcastSet(in2, "bcastVar");
+		else if( preservesPartitioning(mcDataSet, _type) ) {
+			out = in1.flatMap(new DataSetMapMMPartitionFunction(_type)).withBroadcastSet(in2, "bcastVar");
 		}
 		else {
-			out = in1.map(new RDDMapMMFunction(_type)).withBroadcastSet(in2, "bcastVar");
+			out = in1.map(new DataSetMapMMFunction(_type)).withBroadcastSet(in2, "bcastVar");
 		}
 
 		//empty output block filter
@@ -143,7 +143,7 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 
 
 		//perform aggregation if necessary and put output into symbol table
-		if( _aggtype == SparkAggType.SINGLE_BLOCK ) //TODO: Test this case
+		if( _aggtype == SparkAggType.SINGLE_BLOCK )
 		{
 			MatrixBlock out2 = DataSetAggregateUtils.sumStable1(out);
 
@@ -158,9 +158,9 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 					.reduce(new MatrixMultiplicationFunctions.SumMatrixBlocksStable());
 			}
 
-			//put output RDD handle into symbol table
+			//put output DataSet handle into symbol table
 			flec.setDataSetHandleForVariable(output.getName(), out);
-			flec.addLineageDataSet(output.getName(), rddVar);
+			flec.addLineageDataSet(output.getName(), datasetVar);
 
 			//update output statistics if not inferred
 			updateBinaryMMOutputMatrixCharacteristics(flec, true);
@@ -197,7 +197,7 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	 *
 	 *
 	 */
-	private static class RDDMapMMFunction extends RichMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
+	private static class DataSetMapMMFunction extends RichMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
 	{
 		private CacheType _type = null;
 		
@@ -205,12 +205,12 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
 
-		public RDDMapMMFunction( CacheType type )
+		public DataSetMapMMFunction( CacheType type )
 		{
 			_type = type;
 		}
 
-		public RDDMapMMFunction()
+		public DataSetMapMMFunction()
 		{
 
 		}
@@ -254,7 +254,7 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	/**
 	 *
 	 */
-	private static class RDDMapMMPartitionFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
+	private static class DataSetMapMMPartitionFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>
 	{
 		private CacheType _type = null;
 		
@@ -262,12 +262,12 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
 
-		public RDDMapMMPartitionFunction( CacheType type)
+		public DataSetMapMMPartitionFunction( CacheType type)
 		{
 			_type = type;
 		}
 
-		public RDDMapMMPartitionFunction()
+		public DataSetMapMMPartitionFunction()
 		{
 
 		}
@@ -306,7 +306,7 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 	 *
 	 *
 	 */
-	private static class RDDFlatMapMMFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>,
+	private static class DataSetFlatMapMMFunction extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>,
 		Tuple2<MatrixIndexes, MatrixBlock>> {
 		private CacheType _type = null;
 		
@@ -314,12 +314,12 @@ public class MapmmFLInstruction extends BinaryFLInstruction
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
 
-		public RDDFlatMapMMFunction( CacheType type )
+		public DataSetFlatMapMMFunction( CacheType type )
 		{
 			_type = type;
 		}
 
-		public RDDFlatMapMMFunction()
+		public DataSetFlatMapMMFunction()
 		{
 
 		}

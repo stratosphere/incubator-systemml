@@ -64,9 +64,7 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
             throws DMLRuntimeException {
         String[] parts = InstructionUtils.getInstructionPartsWithValueType(instr);
 
-		System.out.println(parts[0]);
-		
-        InstructionUtils.checkNumFields(parts, 3);
+		InstructionUtils.checkNumFields(parts, 3);
 
         String opcode = parts[0];
         in1.split(parts[1]);
@@ -153,12 +151,12 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
 		//sanity check dimensions
 		checkMatrixMatrixBinaryCharacteristics(flec);
 
-		//get input RDDs
-		String rddVar = input1.getName();
+		//get input DataSets
+		String datasetVar = input1.getName();
 		String bcastVar = input2.getName();
-		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in1 = flec.getBinaryBlockDataSetHandleForVariable( rddVar );
+		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in1 = flec.getBinaryBlockDataSetHandleForVariable( datasetVar );
 		DataSet<Tuple2<MatrixIndexes,MatrixBlock>> in2 = flec.getBinaryBlockDataSetHandleForVariable( bcastVar );
-		MatrixCharacteristics mc1 = flec.getMatrixCharacteristics(rddVar);
+		MatrixCharacteristics mc1 = flec.getMatrixCharacteristics(datasetVar);
 		MatrixCharacteristics mc2 = flec.getMatrixCharacteristics(bcastVar);
 
 		BinaryOperator bop = (BinaryOperator) _optr;
@@ -178,10 +176,10 @@ public abstract class BinaryFLInstruction extends ComputationFLInstruction {
 				new MatrixVectorBinaryOpPartitionFunction(bop, vtype)).withBroadcastSet(in2, "bcastVar");
 		}
 
-		//set output RDD
+		//set output DataSet
 		updateBinaryOutputMatrixCharacteristics(flec);
 		flec.setDataSetHandleForVariable(output.getName(), out);
-		flec.addLineageDataSet(output.getName(), rddVar);
+		flec.addLineageDataSet(output.getName(), datasetVar);
 	}
 
     /**

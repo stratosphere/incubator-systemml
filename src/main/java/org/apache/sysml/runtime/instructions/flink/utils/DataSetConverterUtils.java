@@ -79,7 +79,7 @@ public class DataSetConverterUtils {
         //inject empty blocks (if necessary)
         if (outputEmptyBlocks && mcOut.mightHaveEmptyBlocks()) {
             out = out.union(
-                    FlinkUtils.getEmptyBlockRDD(env, mcOut));
+                    FlinkUtils.getEmptyBlockDataSet(env, mcOut));
         }
 
         //aggregate partial matrix blocks
@@ -109,7 +109,7 @@ public class DataSetConverterUtils {
         //inject empty blocks (if necessary)
         if (outputEmptyBlocks && mcOut.mightHaveEmptyBlocks()) {
             out = out.union(
-                    FlinkUtils.getEmptyBlockRDD(env, mcOut));
+                    FlinkUtils.getEmptyBlockDataSet(env, mcOut));
         }
 
         //aggregate partial matrix blocks

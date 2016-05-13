@@ -47,7 +47,7 @@ public class ReorgMapFunction implements MapFunction<Tuple2<MatrixIndexes, Matri
 			_indexFnObject = DiagIndex.getDiagIndexFnObject();
 		}
 		else {
-			throw new DMLRuntimeException("Incorrect opcode for RDDReorgMapFunction:" + opcode);
+			throw new DMLRuntimeException("Incorrect opcode for DataSetReorgMapFunction:" + opcode);
 		}
 		_reorgOp = new ReorgOperator(_indexFnObject);
 	}

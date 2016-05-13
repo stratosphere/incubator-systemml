@@ -154,7 +154,7 @@ public class DataSetAggregateUtils {
 		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out =
 			tmp.map( new ExtractMatrixBlock() );
 
-		//return the aggregate rdd
+		//return the aggregate dataset
 		return out;
 	}
 
@@ -281,7 +281,7 @@ public class DataSetAggregateUtils {
 
 
 	/**
-	 * Utility to compute number of non-zeros from the given RDD of MatrixBlocks
+	 * Utility to compute number of non-zeros from the given DataSet of MatrixBlocks
 	 *
 	 * @param input
 	 * @return

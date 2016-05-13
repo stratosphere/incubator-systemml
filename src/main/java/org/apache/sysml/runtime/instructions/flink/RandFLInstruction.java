@@ -362,14 +362,14 @@ public class RandFLInstruction extends UnaryFLInstruction
 		}
 
 		//step 3: seed generation 
-		DataSet<Tuple2<MatrixIndexes, Tuple2<Long, Long>>> seedsRDD = null;
+		DataSet<Tuple2<MatrixIndexes, Tuple2<Long, Long>>> seedsDataSet = null;
 		Well1024a bigrand = LibMatrixDatagen.setupSeedsForRand(lSeed);
 		long[] nnz = LibMatrixDatagen.computeNNZperBlock(rows, cols, rowsInBlock, colsInBlock, sparsity);
 		double hdfsBlkSize = InfrastructureAnalyzer.getHDFSBlockSize();
 		long numBlocks = nnz.length;
 		long numColBlocks = (long)Math.ceil((double)cols/(double)colsInBlock);
 
-		//a) in-memory seed rdd construction 
+		//a) in-memory seed dataset construction 
 		if( numBlocks < INMEMORY_NUMBLOCKS_THRESHOLD )
 		{
 			ArrayList<Tuple2<MatrixIndexes, Tuple2<Long, Long>>> seeds =
@@ -388,10 +388,10 @@ public class RandFLInstruction extends UnaryFLInstruction
 			//for load balancing: degree of parallelism such that ~128MB per partition
 			int numPartitions = (int) Math.max(Math.min(partSize/hdfsBlkSize, numBlocks), 1);
 
-			//create seeds rdd 
-			seedsRDD = flec.getFlinkContext().fromCollection(seeds);
+			//create seeds dataset 
+			seedsDataSet = flec.getFlinkContext().fromCollection(seeds);
 		}
-		//b) file-based seed rdd construction (for robustness wrt large number of blocks)
+		//b) file-based seed dataset construction (for robustness wrt large number of blocks)
 		else
 		{
 			String path = LibMatrixDatagen.generateUniqueSeedPath(dir);
@@ -425,14 +425,14 @@ public class RandFLInstruction extends UnaryFLInstruction
 			//for load balancing: degree of parallelism such that ~128MB per partition
 			int numPartitions = (int) Math.max(Math.min(partSize/hdfsBlkSize, numBlocks), 1);
 
-			//create seeds rdd 
-			seedsRDD = flec.getFlinkContext()
+			//create seeds dataset 
+			seedsDataSet = flec.getFlinkContext()
 				.readTextFile(path)
 				.map(new ExtractSeedTuple());
 		}
 
 		//step 4: execute rand instruction over seed input
-		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = seedsRDD
+		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = seedsDataSet
 			.map(new GenerateRandomBlock(rows, cols, rowsInBlock, colsInBlock,
 				sparsity, minValue, maxValue, pdf, pdfParams));
 
@@ -467,12 +467,12 @@ public class RandFLInstruction extends UnaryFLInstruction
 			LOG.trace("Process RandSPInstruction seq with seqFrom="+seq_from+", seqTo="+seq_to+", seqIncr"+seq_incr);
 
 		//step 1: offset generation 
-		DataSet<Double> offsetsRDD = null;
+		DataSet<Double> offsetsDataSet = null;
 		double hdfsBlkSize = InfrastructureAnalyzer.getHDFSBlockSize();
 		long nnz = (long) Math.abs(Math.round((seq_to - seq_from)/seq_incr)) + 1;
 		long numBlocks = (long)Math.ceil(((double)nnz)/rowsInBlock);
 
-		//a) in-memory offset rdd construction 
+		//a) in-memory offset dataset construction 
 		if( numBlocks < INMEMORY_NUMBLOCKS_THRESHOLD )
 		{
 			ArrayList<Double> offsets = new ArrayList<Double>();
@@ -486,10 +486,10 @@ public class RandFLInstruction extends UnaryFLInstruction
 			//for load balancing: degree of parallelism such that ~128MB per partition
 			int numPartitions = (int) Math.max(Math.min(partSize/hdfsBlkSize, numBlocks), 1);
 
-			//create offset rdd
-			offsetsRDD = flec.getFlinkContext().fromCollection(offsets);
+			//create offset dataset
+			offsetsDataSet = flec.getFlinkContext().fromCollection(offsets);
 		}
-		//b) file-based offset rdd construction (for robustness wrt large number of blocks)
+		//b) file-based offset dataset construction (for robustness wrt large number of blocks)
 		else
 		{
 			String path = LibMatrixDatagen.generateUniqueSeedPath(dir);
@@ -515,8 +515,8 @@ public class RandFLInstruction extends UnaryFLInstruction
 			//for load balancing: degree of parallelism such that ~128MB per partition
 			int numPartitions = (int) Math.max(Math.min(partSize/hdfsBlkSize, numBlocks), 1);
 
-			//create seeds rdd 
-			offsetsRDD = flec.getFlinkContext()
+			//create seeds dataset 
+			offsetsDataSet = flec.getFlinkContext()
 				.readTextFile(path)
 				.map(new ExtractOffsetTuple());
 		}
@@ -527,7 +527,7 @@ public class RandFLInstruction extends UnaryFLInstruction
 		}
 
 		//step 2: execute seq instruction over offset input
-		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = offsetsRDD
+		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = offsetsDataSet
 			.map(new GenerateSequenceBlock(rowsInBlock, seq_from, seq_to, seq_incr));
 
 		//step 3: output handling
@@ -583,20 +583,20 @@ public class RandFLInstruction extends UnaryFLInstruction
 		DataSet<Double> randomizedDataSet = dataset.map(new AttachRandom()).map(new DataSetConverterUtils.ExtractElement(1));
 
 		// Trim the sampled list to required size & attach matrix indexes to randomized elements
-		DataSet<Tuple2<MatrixIndexes, MatrixCell>> miRDD = DataSetUtils.zipWithIndex(randomizedDataSet)
+		DataSet<Tuple2<MatrixIndexes, MatrixCell>> miDataSet = DataSetUtils.zipWithIndex(randomizedDataSet)
 			.filter( new TrimSample(rows) )
 			.map( new Double2MatrixCell() );
 
 		MatrixCharacteristics mcOut = new MatrixCharacteristics(rows, 1, rowsInBlock, colsInBlock, rows);
 
 		// Construct BinaryBlock representation
-		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mbRDD =
-			DataSetConverterUtils.binaryCellToBinaryBlock(flec.getFlinkContext(), miRDD, mcOut, true);
+		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> mbDataSet =
+			DataSetConverterUtils.binaryCellToBinaryBlock(flec.getFlinkContext(), miDataSet, mcOut, true);
 
 		MatrixCharacteristics retDims = flec.getMatrixCharacteristics(output.getName());
 		retDims.setNonZeros(rows);
 
-		flec.setDataSetHandleForVariable(output.getName(), mbRDD);
+		flec.setDataSetHandleForVariable(output.getName(), mbDataSet);
 	}
 
 	/**
@@ -630,7 +630,7 @@ public class RandFLInstruction extends UnaryFLInstruction
 	 * random number against the required sample fraction.
 	 *
 	 * In the special case of fraction=1.0, the permutation of the input 
-	 * range is computed, simply by creating RDD of elements from input range.
+	 * range is computed, simply by creating DataSet of elements from input range.
 	 *
 	 */
 	private static class GenerateSampleBlock implements FlatMapFunction<SampleTask, Double>
@@ -709,7 +709,7 @@ public class RandFLInstruction extends UnaryFLInstruction
 	}
 
 	/**
-	 * Function to convert JavaRDD of Doubles to JavaPairRDD<MatrixIndexes, MatrixCell>
+	 * Function to convert JavaDataSet of Doubles to JavaPairDataSet<MatrixIndexes, MatrixCell>
 	 *
 	 */
 	private static class Double2MatrixCell implements MapFunction<Tuple2<Long, Double>, Tuple2<MatrixIndexes, MatrixCell>>
@@ -726,8 +726,8 @@ public class RandFLInstruction extends UnaryFLInstruction
 	}
 
 	/**
-	 * Pair function to attach a random number as a key to input JavaRDD.
-	 * The produced JavaPairRDD is subsequently used to randomize the sampled elements. 
+	 * Pair function to attach a random number as a key to input JavaDataSet.
+	 * The produced JavaPairDataSet is subsequently used to randomize the sampled elements. 
 	 *
 	 */
 	private static class AttachRandom extends RichMapFunction<Double, Tuple2<Double, Double>> {

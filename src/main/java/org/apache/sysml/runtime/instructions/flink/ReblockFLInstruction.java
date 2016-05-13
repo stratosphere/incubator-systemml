@@ -95,7 +95,7 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
             //check jdk version (prevent double.parseDouble contention on <jdk8)
             //flec.checkAndRaiseValidationWarningJDKVersion();
 
-            //get the input textcell rdd
+            //get the input textcell dataset
             DataSet<Tuple2<LongWritable, Text>> lines = (DataSet<Tuple2<LongWritable, Text>>)
                     flec.getDataSetHandleForVariable(input1.getName(), iimd.getInputInfo());
 
@@ -104,7 +104,7 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
                     DataSetConverterUtils.textCellToBinaryBlock(flec.getFlinkContext(), lines, mcOut,
                             outputEmptyBlocks);
 
-            //put output RDD handle into symbol table
+            //put output DataSet handle into symbol table
             flec.setDataSetHandleForVariable(output.getName(), out);
             flec.addLineageDataSet(output.getName(), input1.getName());
         } else if (iimd.getInputInfo() == InputInfo.CSVInputInfo) {
@@ -133,22 +133,22 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
             DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = DataSetConverterUtils.binaryCellToBinaryBlock(
                     flec.getFlinkContext(), binaryCells, mcOut, outputEmptyBlocks);
 
-            //put output RDD handle into symbol table
+            //put output DataSet handle into symbol table
             flec.setDataSetHandleForVariable(output.getName(), out);
             flec.addLineageDataSet(output.getName(), input1.getName());
         } else if (iimd.getInputInfo() == InputInfo.BinaryBlockInputInfo) {
             /// HACK ALERT: Workaround for MLContext
             if (mc.getRowsPerBlock() == mcOut.getRowsPerBlock() && mc.getColsPerBlock() == mcOut.getColsPerBlock()) {
-                if (mo.getRDDHandle() != null) {
+                if (mo.getDataSetHandle() != null) {
                     DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = (DataSet<Tuple2<MatrixIndexes, MatrixBlock>>) mo.getDataSetHandle().getDataSet();
 
-                    //put output RDD handle into symbol table
+                    //put output DataSet handle into symbol table
                     flec.setDataSetHandleForVariable(output.getName(), out);
                     flec.addLineageDataSet(output.getName(), input1.getName());
                     return;
                 } else {
                     throw new DMLRuntimeException(
-                            "Input RDD is not accessible through buffer pool for ReblockSPInstruction:" + iimd.getInputInfo());
+                            "Input DataSet is not accessible through buffer pool for ReblockSPInstruction:" + iimd.getInputInfo());
                 }
             } else {
                 //BINARY BLOCK <- BINARY BLOCK (different sizes)
@@ -159,7 +159,7 @@ public class ReblockFLInstruction extends UnaryFLInstruction {
                         in1.flatMap(new ExtractBlockForBinaryReblock(mc, mcOut));
                 out = DataSetAggregateUtils.mergeByKey(out);
 
-                //put output RDD handle into symbol table
+                //put output DataSet handle into symbol table
                 flec.setDataSetHandleForVariable(output.getName(), out);
                 flec.addLineageDataSet(output.getName(), input1.getName());
             }

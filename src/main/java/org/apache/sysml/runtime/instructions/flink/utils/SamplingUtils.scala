@@ -29,7 +29,7 @@ private object SamplingUtils {
     *
     * How the sampling rate is determined:
     * Let p = num / total, where num is the sample size and total is the total number of
-    * datapoints in the RDD. We're trying to compute q > p such that
+    * datapoints in the DataSet. We're trying to compute q > p such that
     *   - when sampling with replacement, we're drawing each datapoint with prob_i ~ Pois(q),
     *     where we want to guarantee Pr[s < num] < 0.0001 for s = sum(prob_i for i from 0 to total),
     *     i.e. the failure rate of not having a sufficiently large sample < 0.0001.
@@ -43,7 +43,7 @@ private object SamplingUtils {
     * RNG's resolution).
     *
     * @param sampleSizeLowerBound sample size
-    * @param total size of RDD
+    * @param total size of DataSet
     * @param withReplacement whether sampling with replacement
     * @return a sampling rate that guarantees sufficient sample size with 99.99% success rate
     */
