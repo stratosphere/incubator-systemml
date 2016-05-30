@@ -22,6 +22,7 @@ package org.apache.sysml.runtime.instructions.flink;
 
 import org.apache.flink.api.common.functions.FlatJoinFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
+import org.apache.flink.api.common.operators.base.JoinOperatorBase;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -38,8 +39,6 @@ import org.apache.sysml.runtime.instructions.InstructionUtils;
 import org.apache.sysml.runtime.instructions.cp.CPOperand;
 import org.apache.sysml.runtime.instructions.flink.functions.FilterNonEmptyBlocksFunction;
 import org.apache.sysml.runtime.instructions.flink.functions.MatrixMultiplicationFunctions;
-import org.apache.sysml.runtime.instructions.flink.functions.RichFlatMapBroadcastFunction;
-import org.apache.sysml.runtime.instructions.flink.functions.RichMapBroadcastFunction;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetAggregateUtils;
 import org.apache.sysml.runtime.matrix.MatrixCharacteristics;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
@@ -51,6 +50,8 @@ import org.apache.sysml.runtime.matrix.operators.Operator;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.apache.flink.api.common.operators.base.JoinOperatorBase.JoinHint.BROADCAST_HASH_SECOND;
 
 /**
  * TODO: we need to reason about multiple broadcast variables for chains of mapmults (sum of operations until cleanup)
@@ -121,21 +122,21 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = null;
 		if (requiresFlatMapFunction(_type, mcBc)) {
 			if (_type == CacheType.LEFT) {
-				out = in1.joinWithTiny(in2).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetFlatMapMMFunction());
+				out = in1.join(in2, BROADCAST_HASH_SECOND).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetFlatMapMMFunction());
 			} else {
-				out = in1.joinWithTiny(in2).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetFlatMapMMFunction(_type));
+				out = in1.join(in2, BROADCAST_HASH_SECOND).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetFlatMapMMFunction(_type));
 			}
 		} else if (preservesPartitioning(mcDataSet, _type)) {
 			if (_type == CacheType.LEFT) {
-				out = in1.joinWithTiny(in2).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetMapMMPartitionFunction(_type));
+				out = in1.join(in2, BROADCAST_HASH_SECOND).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetMapMMPartitionFunction(_type));
 			} else {
-				out = in1.joinWithTiny(in2).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetMapMMPartitionFunction(_type));
+				out = in1.join(in2, BROADCAST_HASH_SECOND).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetMapMMPartitionFunction(_type));
 			}
 		} else {
 			if (_type == CacheType.LEFT) {
-				out = in1.joinWithTiny(in2).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetMapMMFunction(_type));
+				out = in1.join(in2, BROADCAST_HASH_SECOND).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetMapMMFunction(_type));
 			} else {
-				out = in1.joinWithTiny(in2).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetMapMMFunction(_type));
+				out = in1.join(in2, BROADCAST_HASH_SECOND).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetMapMMFunction(_type));
 			}
 		}
 
