@@ -20,7 +20,10 @@
 package org.apache.sysml.runtime.instructions.flink;
 
 
+import org.apache.flink.api.common.functions.FlatJoinFunction;
+import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.util.Collector;
 import org.apache.sysml.hops.AggBinaryOp.SparkAggType;
@@ -117,11 +120,23 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 		//execute mapmult instruction
 		DataSet<Tuple2<MatrixIndexes, MatrixBlock>> out = null;
 		if (requiresFlatMapFunction(_type, mcBc)) {
-			out = in1.flatMap(new DataSetFlatMapMMFunction(_type)).withBroadcastSet(in2, "bcastVar");
+			if (_type == CacheType.LEFT) {
+				out = in1.joinWithTiny(in2).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetFlatMapMMFunction());
+			} else {
+				out = in1.joinWithTiny(in2).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetFlatMapMMFunction(_type));
+			}
 		} else if (preservesPartitioning(mcDataSet, _type)) {
-			out = in1.flatMap(new DataSetMapMMPartitionFunction(_type)).withBroadcastSet(in2, "bcastVar");
+			if (_type == CacheType.LEFT) {
+				out = in1.joinWithTiny(in2).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetMapMMPartitionFunction(_type));
+			} else {
+				out = in1.joinWithTiny(in2).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetMapMMPartitionFunction(_type));
+			}
 		} else {
-			out = in1.map(new DataSetMapMMFunction(_type)).withBroadcastSet(in2, "bcastVar");
+			if (_type == CacheType.LEFT) {
+				out = in1.joinWithTiny(in2).where(new RowSelector()).equalTo(new ColumnSelector()).with(new DataSetMapMMFunction(_type));
+			} else {
+				out = in1.joinWithTiny(in2).where(new ColumnSelector()).equalTo(new RowSelector()).with(new DataSetMapMMFunction(_type));
+			}
 		}
 
 		//empty output block filter
@@ -153,6 +168,28 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 	}
 
 	/**
+	 * {@link KeySelector} implementation that retrieves the row index of a matrix block.
+	 */
+	public static class RowSelector implements KeySelector<Tuple2<MatrixIndexes, MatrixBlock>, Long> {
+
+		@Override
+		public Long getKey(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
+			return value.f0.getRowIndex();
+		}
+	}
+
+	/**
+	 * {@link KeySelector} implementation that retrieves the column index of a matrix block.
+	 */
+	public static class ColumnSelector implements KeySelector<Tuple2<MatrixIndexes, MatrixBlock>, Long> {
+
+		@Override
+		public Long getKey(Tuple2<MatrixIndexes, MatrixBlock> value) throws Exception {
+			return value.f0.getColumnIndex();
+		}
+	}
+
+	/**
 	 * @param mcIn
 	 * @param type
 	 * @return
@@ -179,7 +216,8 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 	 *
 	 */
 	private static class DataSetMapMMFunction
-			extends RichMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>> {
+		implements JoinFunction<Tuple2<MatrixIndexes, MatrixBlock>,
+		Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>> {
 		private CacheType _type = null;
 
 		//created operator for reuse
@@ -195,10 +233,10 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 		}
 
 		@Override
-		public Tuple2<MatrixIndexes, MatrixBlock> map(Tuple2<MatrixIndexes, MatrixBlock> arg0)
+		public Tuple2<MatrixIndexes, MatrixBlock> join(Tuple2<MatrixIndexes, MatrixBlock> a, Tuple2<MatrixIndexes, MatrixBlock> b)
 				throws Exception {
-			MatrixIndexes ixIn = arg0.f0;
-			MatrixBlock blkIn = arg0.f1;
+			MatrixIndexes ixIn = a.f0;
+			MatrixBlock blkIn = a.f1;
 
 			MatrixIndexes ixOut = new MatrixIndexes();
 			MatrixBlock blkOut = new MatrixBlock();
@@ -206,7 +244,7 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 			if (_type == CacheType.LEFT) {
 
 				//get the right hand side matrix
-				MatrixBlock left = _pbc.get(1L).get(ixIn.getRowIndex());
+				MatrixBlock left = b.f1;
 
 				//execute matrix-vector mult
 
@@ -215,7 +253,7 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 			} else //if( _type == CacheType.RIGHT )
 			{
 				//get the right hand side matrix
-				MatrixBlock right = _pbc.get(ixIn.getColumnIndex()).get(1L);
+				MatrixBlock right = b.f1;
 
 				//execute matrix-vector mult
 				OperationsOnMatrixValues.performAggregateBinary(
@@ -231,7 +269,8 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 	 *
 	 */
 	private static class DataSetMapMMPartitionFunction
-			extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>> {
+		implements JoinFunction<Tuple2<MatrixIndexes, MatrixBlock>,
+		Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>>  {
 		private CacheType _type = null;
 
 		//created operator for reuse
@@ -247,29 +286,29 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 		}
 
 		@Override
-		public void flatMap(Tuple2<MatrixIndexes, MatrixBlock> arg0, Collector<Tuple2<MatrixIndexes, MatrixBlock>> out)
+		public Tuple2<MatrixIndexes, MatrixBlock> join(Tuple2<MatrixIndexes, MatrixBlock> a, Tuple2<MatrixIndexes, MatrixBlock> b)
 				throws Exception {
-			MatrixIndexes ixIn = arg0.f0;
-			MatrixBlock blkIn = arg0.f1;
+			MatrixIndexes ixIn = a.f0;
+			MatrixBlock blkIn = a.f1;
 			MatrixBlock blkOut = new MatrixBlock();
 
 			if (_type == CacheType.LEFT) {
 				//get the right hand side matrix
-				MatrixBlock left = _pbc.get(1L).get(ixIn.getRowIndex());
+				MatrixBlock left = b.f1;
 				//execute index preserving matrix multiplication
 				left.aggregateBinaryOperations(left, blkIn, blkOut, _op);
 
 
 			} else //if( _type == CacheType.RIGHT )
 			{
-				MatrixBlock right = _pbc.get(ixIn.getColumnIndex()).get(1L);
+				MatrixBlock right = b.f1;
 
 				//execute index preserving matrix multiplication
 				blkIn.aggregateBinaryOperations(blkIn, right, blkOut, _op);
 
 			}
 
-			out.collect(new Tuple2<MatrixIndexes, MatrixBlock>(ixIn, blkOut));
+			return (new Tuple2<MatrixIndexes, MatrixBlock>(ixIn, blkOut));
 		}
 	}
 
@@ -278,16 +317,16 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 	 *
 	 */
 	private static class DataSetFlatMapMMFunction
-			extends RichFlatMapBroadcastFunction<Tuple2<MatrixIndexes, MatrixBlock>,
-			Tuple2<MatrixIndexes, MatrixBlock>> {
-		private CacheType _type = null;
-
+			implements JoinFunction<Tuple2<MatrixIndexes, MatrixBlock>,
+									Tuple2<MatrixIndexes, MatrixBlock>, Tuple2<MatrixIndexes, MatrixBlock>> {
+		CacheType _type;
+		
 		//created operator for reuse
 		AggregateOperator agg = new AggregateOperator(0, Plus.getPlusFnObject());
 		AggregateBinaryOperator _op = new AggregateBinaryOperator(Multiply.getMultiplyFnObject(), agg);
 
-		public DataSetFlatMapMMFunction(CacheType type) {
-			_type = type;
+		public DataSetFlatMapMMFunction(CacheType _type) {
+			this._type = _type;
 		}
 
 		public DataSetFlatMapMMFunction() {
@@ -295,43 +334,36 @@ public class MapmmFLInstruction extends BinaryFLInstruction {
 		}
 
 		@Override
-		public void flatMap(Tuple2<MatrixIndexes, MatrixBlock> arg0, Collector<Tuple2<MatrixIndexes, MatrixBlock>> out)
+		public Tuple2<MatrixIndexes, MatrixBlock> join(Tuple2<MatrixIndexes, MatrixBlock> a, Tuple2<MatrixIndexes, MatrixBlock> b)
 				throws Exception {
-			MatrixIndexes ixIn = arg0.f0;
-			MatrixBlock blkIn = arg0.f1;
+			MatrixIndexes ixIn = a.f0;
+			MatrixBlock blkIn = a.f1;
 
 			if (_type == CacheType.LEFT) {
 				//for all matching left-hand-side blocks
-				for (Map.Entry<Long, HashMap<Long, MatrixBlock>> i : _pbc.entrySet()) {
-					MatrixBlock left = i.getValue().get(ixIn.getRowIndex());
+				MatrixBlock left = b.f1;
 
-					MatrixIndexes ixOut = new MatrixIndexes();
-					MatrixBlock blkOut = new MatrixBlock();
+				MatrixIndexes ixOut = new MatrixIndexes();
+				MatrixBlock blkOut = new MatrixBlock();
 
-					//execute matrix-vector mult
-					OperationsOnMatrixValues.performAggregateBinary(
-							new MatrixIndexes(i.getKey(), ixIn.getRowIndex()), left, ixIn, blkIn, ixOut, blkOut, _op);
-
-					out.collect(new Tuple2<MatrixIndexes, MatrixBlock>(ixOut, blkOut));
-				}
+				//execute matrix-vector mult
+				OperationsOnMatrixValues.performAggregateBinary(
+						new MatrixIndexes(b.f0.getRowIndex(), ixIn.getRowIndex()), left, ixIn, blkIn, ixOut, blkOut, _op);
+											//or columnindex
+				return(new Tuple2<MatrixIndexes, MatrixBlock>(ixOut, blkOut));
 			} else //if( _type == CacheType.RIGHT )
 			{
-				//for all matching right-hand-side blocks
-				HashMap<Long, MatrixBlock> blocklist = _pbc.get(ixIn.getColumnIndex());
+				//get the right hand side matrix
+				MatrixBlock right = b.f1;
+				MatrixIndexes ixOut = new MatrixIndexes();
+				MatrixBlock blkOut = new MatrixBlock();
 
-				for (Map.Entry<Long, MatrixBlock> j : blocklist.entrySet()) {
-					//get the right hand side matrix
-					MatrixBlock right = j.getValue();
-					MatrixIndexes ixOut = new MatrixIndexes();
-					MatrixBlock blkOut = new MatrixBlock();
+				//execute matrix-vector mult
+				OperationsOnMatrixValues.performAggregateBinary(              //or rowindex
+						ixIn, blkIn, new MatrixIndexes(ixIn.getColumnIndex(), b.f0.getColumnIndex()), right, ixOut, blkOut,
+						_op);
 
-					//execute matrix-vector mult
-					OperationsOnMatrixValues.performAggregateBinary(
-							ixIn, blkIn, new MatrixIndexes(ixIn.getColumnIndex(), j.getKey()), right, ixOut, blkOut,
-							_op);
-
-					out.collect(new Tuple2<MatrixIndexes, MatrixBlock>(ixOut, blkOut));
-				}
+				return(new Tuple2<MatrixIndexes, MatrixBlock>(ixOut, blkOut));
 			}
 		}
 	}
