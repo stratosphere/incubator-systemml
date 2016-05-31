@@ -438,19 +438,6 @@ public class FlinkExecutionContext extends ExecutionContext {
 	}
 
 	/**
-	 * Flink reserves a fixed size of heap memory for operators (sort, hashing, ...).
-	 * This memory is not available for broadcast and user object. In some cases SystemML creates large buffers.
-	 * The problem is that flink statically assigns the remaining memory to every running task per slot.
-	 * This can lead to the situation in which not enough memory for the buffers remains (even though the statically
-	 * reserved Flink-part is not completely occupied).
-	 *
-	 * It is not easy to get the configuration parameters from Flink and to read taskmanager configuration.
-	 * Therefore, we use a very conservative estimation based on Flink's default setting.
-	 *
-	 * @return
-	 */
-
-	/**
 	 * Returns an estimated upper bound of the memory (in bytes) available in a task manager's user space (UDFs).
 	 * <p>
 	 * Flink manages its on memory for certain operations (sorting, hashing, ...). Therefore,
@@ -497,31 +484,39 @@ public class FlinkExecutionContext extends ExecutionContext {
 		Map<String, String> parameters = conf.getGlobalJobParameters().toMap();
 
 		// get the total memory for the taskmanager
-		_memTaskManagerTotal = Integer.parseInt(parameters.getOrDefault("taskmanager.heap.mb", "512")) * 1024 * 1024;
+		_memTaskManagerTotal = Integer.parseInt(getOrDefault(parameters, "taskmanager.heap.mb", "512")) * 1024 * 1024;
 		// get the memory that is managed by flink for the operators (sorting, hashing, caching)
-		int taskManagerMemSize = Integer.parseInt(parameters.getOrDefault("taskmanager.memory.size", "-1"));
+		int taskManagerMemSize = Integer.parseInt(getOrDefault(parameters, "taskmanager.memory.size", "-1"));
 
 		// if the task manager memory size is not set, it is evaluated with the fraction
 		if (taskManagerMemSize > 0) {
 			_memTaskManagerManaged = taskManagerMemSize * 1024 * 1024;
 		} else {
 			_memTaskManagerManagedFraction = Double.parseDouble(
-					parameters.getOrDefault("taskmanager.memory.fraction", "0.7"));
+					getOrDefault(parameters, "taskmanager.memory.fraction", "0.7"));
 			_memTaskManagerManaged = _memTaskManagerManagedFraction * _memTaskManagerTotal;
 		}
 
 		// number of slots per taskmanager
-		_slotsPerTaskManager = Integer.parseInt(parameters.getOrDefault("taskmanager.numberOfTaskSlots", "1"));
+		_slotsPerTaskManager = Integer.parseInt(getOrDefault(parameters, "taskmanager.numberOfTaskSlots", "1"));
 		// total number of slots
-		_defaultPar = Integer.parseInt(parameters.getOrDefault("parallelization.degree.default", "1"));
+		_defaultPar = Integer.parseInt(getOrDefault(parameters, "parallelization.degree.default", "1"));
 		// number of taskmanagers = ceil(total slots / number of slots per taskmanager)
 		_numTaskmanagers = (int) Math.ceil(_defaultPar / _slotsPerTaskManager); // calculate the number of taskmanagers
 
 		// network buffers (for boradcasts/shuffles)
 		int numNetworkBuffers = Integer.parseInt(
-				parameters.getOrDefault("taskmanager.network.numberOfBuffers", "2048"));
+				getOrDefault(parameters, "taskmanager.network.numberOfBuffers", "2048"));
 		int networkBufferSize = Integer.parseInt(
-				parameters.getOrDefault("taskmanager.network.bufferSizeInBytes", "32768"));
+				getOrDefault(parameters, "taskmanager.network.bufferSizeInBytes", "32768"));
 		_memNetworkBuffers = numNetworkBuffers * networkBufferSize;
+	}
+
+	private static <K,V> V getOrDefault(Map<K, V> map, K key, V defaultValue) {
+		if (map.containsKey(key)) {
+			return map.get(key);
+		} else {
+			return defaultValue;
+		}
 	}
 }
