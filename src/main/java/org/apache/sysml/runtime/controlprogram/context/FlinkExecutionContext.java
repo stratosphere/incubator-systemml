@@ -22,9 +22,11 @@ package org.apache.sysml.runtime.controlprogram.context;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.typeutils.TupleTypeInfo;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.hadoop.io.LongWritable;
@@ -39,6 +41,7 @@ import org.apache.sysml.runtime.instructions.flink.functions.CopyBlockPairFuncti
 import org.apache.sysml.runtime.instructions.flink.functions.CopyTextInputFunction;
 import org.apache.sysml.runtime.instructions.flink.utils.DataSetAggregateUtils;
 import org.apache.sysml.runtime.instructions.flink.utils.IOUtils;
+import org.apache.sysml.runtime.instructions.flink.utils.MatrixBlockIterator;
 import org.apache.sysml.runtime.matrix.data.InputInfo;
 import org.apache.sysml.runtime.matrix.data.MatrixBlock;
 import org.apache.sysml.runtime.matrix.data.MatrixCell;
@@ -194,36 +197,9 @@ public class FlinkExecutionContext extends ExecutionContext {
 	public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> toDataSet(ExecutionEnvironment env, MatrixBlock src,
 																		int brlen, int bclen)
 			throws DMLRuntimeException {
-		LinkedList<Tuple2<MatrixIndexes, MatrixBlock>> list = new LinkedList<Tuple2<MatrixIndexes, MatrixBlock>>();
-
-		if (src.getNumRows() <= brlen
-				&& src.getNumColumns() <= bclen) {
-			list.addLast(new Tuple2<MatrixIndexes, MatrixBlock>(new MatrixIndexes(1, 1), src));
-		} else {
-			boolean sparse = src.isInSparseFormat();
-
-			//create and write subblocks of matrix
-			for (int blockRow = 0; blockRow < (int) Math.ceil(src.getNumRows() / (double) brlen); blockRow++)
-				for (int blockCol = 0; blockCol < (int) Math.ceil(src.getNumColumns() / (double) bclen); blockCol++) {
-					int maxRow = (blockRow * brlen + brlen < src.getNumRows()) ? brlen : src.getNumRows() - blockRow * brlen;
-					int maxCol = (blockCol * bclen + bclen < src.getNumColumns()) ? bclen : src.getNumColumns() - blockCol * bclen;
-
-					MatrixBlock block = new MatrixBlock(maxRow, maxCol, sparse);
-
-					int row_offset = blockRow * brlen;
-					int col_offset = blockCol * bclen;
-
-					//copy submatrix to block
-					src.sliceOperations(row_offset, row_offset + maxRow - 1,
-							col_offset, col_offset + maxCol - 1, block);
-
-					//append block to sequence file
-					MatrixIndexes indexes = new MatrixIndexes(blockRow + 1, blockCol + 1);
-					list.addLast(new Tuple2<MatrixIndexes, MatrixBlock>(indexes, block));
-				}
-		}
-
-		return env.fromCollection(list);
+		
+		TupleTypeInfo<Tuple2<MatrixIndexes, MatrixBlock>> t = new TupleTypeInfo<Tuple2<MatrixIndexes, MatrixBlock>>(TypeInformation.of(MatrixIndexes.class), TypeInformation.of(MatrixBlock.class));
+		return env.fromParallelCollection(new MatrixBlockIterator(src, brlen, bclen), t);
 	}
 
 	/**

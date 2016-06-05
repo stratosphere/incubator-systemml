@@ -49,6 +49,7 @@ public class DataSetAggregateUtils {
 		try {
 			return input.reduce(new SumSingleBlockFunction()).collect().get(0);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new DMLRuntimeException("Could not collect final block of " + input);
 		}
 	}
@@ -59,6 +60,7 @@ public class DataSetAggregateUtils {
 			return (MatrixBlock) in.map(new DataSetConverterUtils.ExtractElement(1)).returns(MatrixBlock.class).reduce(
 					new SumSingleBlockFunction()).collect().get(0);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new DMLRuntimeException("Could not collect final block of " + in);
 		}
 	}

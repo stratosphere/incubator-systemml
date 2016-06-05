@@ -41,7 +41,7 @@ public class FlinkUtils {
 		ArrayList<Tuple2<MatrixIndexes, MatrixBlock>> list = new ArrayList<Tuple2<MatrixIndexes, MatrixBlock>>();
 		int nrblks = (int) Math.ceil((double) mc.getRows() / mc.getRowsPerBlock());
 		int ncblks = (int) Math.ceil((double) mc.getCols() / mc.getColsPerBlock());
-		for (long r = 1; r <= nrblks; r++)
+		for (long r = 1; r <= nrblks; r++) {
 			for (long c = 1; c <= ncblks; c++) {
 				int lrlen = UtilFunctions.computeBlockSize(mc.getRows(), r, mc.getRowsPerBlock());
 				int lclen = UtilFunctions.computeBlockSize(mc.getCols(), c, mc.getColsPerBlock());
@@ -49,6 +49,7 @@ public class FlinkUtils {
 				MatrixBlock mb = new MatrixBlock(lrlen, lclen, true);
 				list.add(new Tuple2<MatrixIndexes, MatrixBlock>(ix, mb));
 			}
+		}
 
 		//create dataset of in-memory list
 		return env.fromCollection(list);
