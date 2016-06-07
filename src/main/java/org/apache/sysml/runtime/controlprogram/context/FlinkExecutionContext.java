@@ -35,6 +35,7 @@ import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.Program;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
 import org.apache.sysml.runtime.instructions.flink.data.DataSetObject;
+import org.apache.sysml.runtime.instructions.flink.functions.BlockSplitter;
 import org.apache.sysml.runtime.instructions.flink.functions.CopyBinaryCellFunction;
 import org.apache.sysml.runtime.instructions.flink.functions.CopyBlockPairFunction;
 import org.apache.sysml.runtime.instructions.flink.functions.CopyTextInputFunction;
@@ -132,26 +133,21 @@ public class FlinkExecutionContext extends ExecutionContext {
 		}
 		//CASE 2: dirty in memory data or cached result of dataset operations
 		else if (mo.isDirty() || mo.isCached(false)) {
-			//get in-memory matrix block and parallelize it
-			//w/ guarded parallelize (fallback to export, dataset from file if too large)
-			boolean fromFile = false;
-			if( !OptimizerUtils.checkFlinkCollectMemoryBudget(mo.getMatrixCharacteristics(), 0) ) { //execute always
-				if( mo.isDirty() ) { //write only if necessary
-					mo.exportData();
-				}
-				dataSet = IOUtils.hadoopFile(getFlinkContext(), mo.getFileName(), inputInfo.inputFormatClass, inputInfo.inputKeyClass, inputInfo.inputValueClass);
-				dataSet = ((DataSet<Tuple2<MatrixIndexes, MatrixBlock>>)dataSet).map( new CopyBlockPairFunction() ); //cp is workaround for read bug
-				fromFile = true;
+			
+			if( mo.isDirty() ) { //write only if necessary
+				mo.exportData();
 			}
-			else { //works only for really small matrices
-				MatrixBlock mb = mo.acquireRead(); //pin matrix in memory
-				dataSet = toDataSet(getFlinkContext(), mb, (int)mo.getNumRowsPerBlock(), (int)mo.getNumColumnsPerBlock());
-				mo.release(); //unpin matrix
+			dataSet = IOUtils.hadoopFile(getFlinkContext(), mo.getFileName(), inputInfo.inputFormatClass, inputInfo.inputKeyClass, inputInfo.inputValueClass);
+			dataSet = ((DataSet<Tuple2<MatrixIndexes, MatrixBlock>>)dataSet).map( new CopyBlockPairFunction() ); //cp is workaround for read bug
+			
+			
+			if(OptimizerUtils.checkFlinkCollectMemoryBudget(mo.getMatrixCharacteristics(), 0) ) { //execute always
+				dataSet = ((DataSet<Tuple2<MatrixIndexes, MatrixBlock>>)dataSet).flatMap( new BlockSplitter((int)mo.getNumRowsPerBlock(), (int)mo.getNumColumnsPerBlock()) );
 			}
 
 			//keep dataSet handle for future operations on it
 			DataSetObject dataSethandle = new DataSetObject(dataSet, mo.getVarName());
-			dataSethandle.setHDFSFile(fromFile);
+			dataSethandle.setHDFSFile(true);
 			mo.setDataSetHandle(dataSethandle);
 		}
 		//CASE 3: non-dirty (file exists on HDFS)
@@ -188,49 +184,6 @@ public class FlinkExecutionContext extends ExecutionContext {
 
 	private synchronized static void initFlinkContext() {
 		_execEnv = ExecutionEnvironment.getExecutionEnvironment();
-	}
-
-	/**
-	 * Utility method for creating an dataset out of an in-memory matrix block.
-	 *
-	 * @param env
-	 * @param src
-	 * @return
-	 * @throws DMLRuntimeException
-	 */
-	public static DataSet<Tuple2<MatrixIndexes, MatrixBlock>> toDataSet(ExecutionEnvironment env, MatrixBlock src,
-																		int brlen, int bclen)
-			throws DMLRuntimeException {
-		LinkedList<Tuple2<MatrixIndexes, MatrixBlock>> list = new LinkedList<Tuple2<MatrixIndexes, MatrixBlock>>();
-
-		if (src.getNumRows() <= brlen
-				&& src.getNumColumns() <= bclen) {
-			list.addLast(new Tuple2<MatrixIndexes, MatrixBlock>(new MatrixIndexes(1, 1), src));
-		} else {
-			boolean sparse = src.isInSparseFormat();
-
-			//create and write subblocks of matrix
-			for (int blockRow = 0; blockRow < (int) Math.ceil(src.getNumRows() / (double) brlen); blockRow++)
-				for (int blockCol = 0; blockCol < (int) Math.ceil(src.getNumColumns() / (double) bclen); blockCol++) {
-					int maxRow = (blockRow * brlen + brlen < src.getNumRows()) ? brlen : src.getNumRows() - blockRow * brlen;
-					int maxCol = (blockCol * bclen + bclen < src.getNumColumns()) ? bclen : src.getNumColumns() - blockCol * bclen;
-
-					MatrixBlock block = new MatrixBlock(maxRow, maxCol, sparse);
-
-					int row_offset = blockRow * brlen;
-					int col_offset = blockCol * bclen;
-
-					//copy submatrix to block
-					src.sliceOperations(row_offset, row_offset + maxRow - 1,
-							col_offset, col_offset + maxCol - 1, block);
-
-					//append block to sequence file
-					MatrixIndexes indexes = new MatrixIndexes(blockRow + 1, blockCol + 1);
-					list.addLast(new Tuple2<MatrixIndexes, MatrixBlock>(indexes, block));
-				}
-		}
-
-		return env.fromCollection(list);
 	}
 
 	/**
