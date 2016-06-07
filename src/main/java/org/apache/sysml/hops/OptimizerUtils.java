@@ -507,7 +507,32 @@ public class OptimizerUtils
 
 	public static boolean checkFlinkCollectMemoryBudget( MatrixCharacteristics mc, long memPinned )
 	{
-		return checkFlinkCollectMemoryBudget(mc, memPinned);
+		return checkFlinkCollectMemoryBudget(
+			mc.getRows(),
+			mc.getCols(),
+			mc.getRowsPerBlock(),
+			mc.getColsPerBlock(),
+			mc.getNonZeros(), memPinned);
+	}
+
+	/**
+	 *
+	 * @param rlen
+	 * @param clen
+	 * @param brlen
+	 * @param bclen
+	 * @param nnz
+	 * @return
+	 */
+	public static boolean checkFlinkCollectMemoryBudget( long rlen, long clen, int brlen, int bclen, long nnz, long memPinned )
+	{
+		//compute size of output matrix and its blocked representation
+		double sp = getSparsity(rlen, clen, nnz);
+		double memMatrix = estimateSizeExactSparsity(rlen, clen, sp);
+		double memPMatrix = estimatePartitionedSizeExactSparsity(rlen, clen, brlen, bclen, sp);
+
+		//check if both output matrix and partitioned matrix fit into local mem budget
+		return (memPinned + memMatrix + memPMatrix < getLocalMemBudget());
 	}
 	
 	/**
