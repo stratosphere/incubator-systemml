@@ -504,6 +504,12 @@ public class OptimizerUtils
 				mc.getColsPerBlock(),
 				mc.getNonZeros(), memPinned);
 	}
+
+	//TODO: check Akka framesize
+	public static boolean checkFlinkCollectMemoryBudget( MatrixCharacteristics mc, long memPinned )
+	{
+		return false;
+	}
 	
 	/**
 	 * 

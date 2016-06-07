@@ -30,6 +30,7 @@ import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.sysml.api.DMLScript;
+import org.apache.sysml.hops.OptimizerUtils;
 import org.apache.sysml.runtime.DMLRuntimeException;
 import org.apache.sysml.runtime.controlprogram.Program;
 import org.apache.sysml.runtime.controlprogram.caching.MatrixObject;
@@ -134,18 +135,24 @@ public class FlinkExecutionContext extends ExecutionContext {
 			//get in-memory matrix block and parallelize it
 			//w/ guarded parallelize (fallback to export, dataset from file if too large)
 			boolean fromFile = false;
-			// TODO (see spark case for large matrices)
+			if( !OptimizerUtils.checkFlinkCollectMemoryBudget(mo.getMatrixCharacteristics(), 0) ) { //execute always
+				if( mo.isDirty() ) { //write only if necessary
+					mo.exportData();
+				}
+				dataSet = IOUtils.hadoopFile(getFlinkContext(), mo.getFileName(), inputInfo.inputFormatClass, inputInfo.inputKeyClass, inputInfo.inputValueClass);
+				dataSet = ((DataSet<Tuple2<MatrixIndexes, MatrixBlock>>)dataSet).map( new CopyBlockPairFunction() ); //cp is workaround for read bug
+				fromFile = true;
+			}
+			else { //works only for really small matrices
+				MatrixBlock mb = mo.acquireRead(); //pin matrix in memory
+				dataSet = toDataSet(getFlinkContext(), mb, (int)mo.getNumRowsPerBlock(), (int)mo.getNumColumnsPerBlock());
+				mo.release(); //unpin matrix
+			}
 
-			//default case
-			MatrixBlock mb = mo.acquireRead(); //pin matrix in memory
-			dataSet = toDataSet(getFlinkContext(), mb, (int) mo.getNumRowsPerBlock(), (int) mo.getNumColumnsPerBlock());
-			mo.release(); //unpin matrix
-
-
-			//keep dataset handle for future operations on it
-			DataSetObject dshandle = new DataSetObject(dataSet, mo.getVarName());
-			dshandle.setHDFSFile(fromFile);
-			mo.setDataSetHandle(dshandle);
+			//keep dataSet handle for future operations on it
+			DataSetObject dataSethandle = new DataSetObject(dataSet, mo.getVarName());
+			dataSethandle.setHDFSFile(fromFile);
+			mo.setDataSetHandle(dataSethandle);
 		}
 		//CASE 3: non-dirty (file exists on HDFS)
 		else {
@@ -268,7 +275,7 @@ public class FlinkExecutionContext extends ExecutionContext {
 	}
 
 	/**
-	 * Utility method for creating a single matrix block out of a binary block RDD.
+	 * Utility method for creating a single matrix block out of a binary block DataSet.
 	 * Note that this collect call might trigger execution of any pending transformations.
 	 * <p>
 	 * NOTE: This is an unguarded utility function, which requires memory for both the output matrix
