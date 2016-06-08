@@ -48,7 +48,6 @@ import org.apache.sysml.runtime.matrix.data.MatrixIndexes;
 import org.apache.sysml.runtime.matrix.data.OutputInfo;
 import org.apache.sysml.utils.Statistics;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -117,6 +116,7 @@ public class FlinkExecutionContext extends ExecutionContext {
 	}
 
 
+	@SuppressWarnings("unchecked")
 	private DataSet<?> getDataSetHandleForMatrixObject(MatrixObject mo, InputInfo inputInfo)
 			throws DMLRuntimeException {
 
@@ -201,9 +201,9 @@ public class FlinkExecutionContext extends ExecutionContext {
 		//save file is an action which also triggers nnz maintenance
 		IOUtils.saveAsHadoopFile(ldataset,
 				path,
-				oinfo.outputKeyClass,
-				oinfo.outputValueClass,
-				oinfo.outputFormatClass);
+				oinfo.outputFormatClass, oinfo.outputKeyClass,
+				oinfo.outputValueClass
+		);
 
 		//return nnz aggregate of all blocks
 		return nnz;

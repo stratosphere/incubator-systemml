@@ -23,74 +23,75 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.hadoop.mapred.HadoopInputFormat;
 import org.apache.flink.api.java.hadoop.mapred.HadoopOutputFormat;
+import org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils;
+import org.apache.flink.api.java.operators.DataSource;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputFormat;
+import org.apache.hadoop.mapred.TextOutputFormat;
+import org.apache.mesos.protobuf.ByteString;
 import org.apache.sysml.runtime.DMLRuntimeException;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 
 public class IOUtils {
 
-	public static void saveAsHadoopFile(DataSet<?> data, String path, Class outputKeyClass, Class outputValueClass,
-										Class outputFormatClass) throws DMLRuntimeException {
+	@SuppressWarnings("unchecked")
+	public static <K, V> void saveAsHadoopFile(
+			DataSet<Tuple2<K, V>> data,
+			String path,
+			Class outputFormatClass,
+			Class outputKeyClass,
+			Class outputValueClass) throws DMLRuntimeException {
 
-		Class<?> clazz = outputFormatClass;
-		Constructor<?> ctor = null;
-		FileOutputFormat outFormat = null;
+		OutputFormat outputFormat = null;
 		try {
-			ctor = clazz.getConstructor();
-		} catch (NoSuchMethodException e) {
-			throw new DMLRuntimeException(e);
-		}
-		try {
-			outFormat = (FileOutputFormat) ctor.newInstance(new FileOutputFormat[]{});
-		} catch (InstantiationException e) {
-			throw new DMLRuntimeException(e);
-		} catch (IllegalAccessException e) {
-			throw new DMLRuntimeException(e);
-		} catch (InvocationTargetException e) {
-			throw new DMLRuntimeException(e);
+			Constructor<? extends OutputFormat> e = outputFormatClass.getDeclaredConstructor(new Class[0]);
+			e.setAccessible(true);
+			outputFormat = e.newInstance(new Object[0]);
+		} catch (ReflectiveOperationException e) {
+			throw new DMLRuntimeException("Could not instantiate output format", e);
 		}
 
 		JobConf job = new JobConf();
-		HadoopOutputFormat hadoopOutputFormat = new HadoopOutputFormat(outFormat, job);
 		FileOutputFormat.setOutputPath(job, new Path(path));
 		job.setOutputKeyClass(outputKeyClass);
 		job.setOutputValueClass(outputValueClass);
+
+		HadoopOutputFormat<K, V> hadoopOutputFormat = new HadoopOutputFormat<K, V>(outputFormat, job);
 		data.output(hadoopOutputFormat);
 	}
 
-	public static DataSet<?> hadoopFile(ExecutionEnvironment env, String path, Class inputFormatClass,
-										Class inputKeyClass, Class inputValueClass) throws DMLRuntimeException {
+	@SuppressWarnings("unchecked")
+	public static <K, V> DataSource<Tuple2<K, V>> hadoopFile(
+			ExecutionEnvironment env,
+			String path,
+			Class<? extends InputFormat> inputFormatClass,
+			Class<K> inputKeyClass,
+			Class<V> inputValueClass) throws DMLRuntimeException {
 
-		Class<?> clazz = inputFormatClass;
-		Constructor<?> ctor = null;
-		FileInputFormat inFormat = null;
+		InputFormat inputFormat = null;
 		try {
-			ctor = clazz.getConstructor();
-		} catch (NoSuchMethodException e) {
-			throw new DMLRuntimeException(e);
-		}
-		try {
-			inFormat = (FileInputFormat) ctor.newInstance(new FileInputFormat[]{});
-		} catch (InstantiationException e) {
-			throw new DMLRuntimeException(e);
-		} catch (IllegalAccessException e) {
-			throw new DMLRuntimeException(e);
-		} catch (InvocationTargetException e) {
-			throw new DMLRuntimeException(e);
+			Constructor<? extends InputFormat> e = inputFormatClass.getDeclaredConstructor(new Class[0]);
+			e.setAccessible(true);
+			inputFormat = e.newInstance(new Object[0]);
+		} catch (ReflectiveOperationException e) {
+			throw new DMLRuntimeException("Could not instantiate input format", e);
 		}
 
 		JobConf job = new JobConf();
-		HadoopInputFormat hadoopInputFormat = new HadoopInputFormat(inFormat, inputKeyClass, inputValueClass, job);
+		job.setInputFormat(inputFormatClass);
 		FileInputFormat.addInputPath(job, new Path(path));
 
-		DataSet<?> data = env.createInput(hadoopInputFormat);
+		HadoopInputFormat<K, V> hadoopInputFormat = new HadoopInputFormat<K, V>(inputFormat, inputKeyClass,
+				inputValueClass, job);
 
-		return data;
+		return env.createInput(hadoopInputFormat);
 	}
 }

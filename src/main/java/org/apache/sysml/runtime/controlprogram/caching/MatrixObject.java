@@ -650,12 +650,10 @@ public class MatrixObject extends CacheableData<MatrixBlock>
 	protected MatrixBlock readBlobFromDataSet(DataSetObject dataset, MutableBoolean writeStatus)
 		throws IOException
 	{
-		//note: the read of a matrix block from an Dataset might trigger
-		//lazy evaluation of pending transformations.
-		DataSetObject lds = dataset;
-
 		//prepare return status (by default only collect)
 		writeStatus.setValue(false);
+
+		//TODO: Check if we can also use short circuit reads!!!
 
 		MatrixFormatMetaData iimd = (MatrixFormatMetaData) _metaData;
 		MatrixCharacteristics mc = iimd.getMatrixCharacteristics();
@@ -670,13 +668,26 @@ public class MatrixObject extends CacheableData<MatrixBlock>
 			int bclen = (int)mc.getColsPerBlock();
 			long nnz = mc.getNonZeros();
 
-			if( ii == InputInfo.BinaryCellInputInfo ) {
+			//guarded dataset collect
+			if( ii == InputInfo.BinaryBlockInputInfo && //guarded collect not for binary cell
+					!OptimizerUtils.checkFlinkCollectMemoryBudget(rlen, clen, brlen, bclen, nnz, getPinnedSize()) ) {
+				//write dataset to hdfs and read to prevent invalid collect mem consumption
+				//note: lazy, partition-at-a-time collect (toLocalIterator) was significantly slower
+				if( !MapReduceTool.existsFileOnHDFS(_hdfsFileName) ) { //prevent overwrite existing file
+					long newnnz = FlinkExecutionContext.writeDataSetToHDFS(dataset, _hdfsFileName, iimd.getOutputInfo());
+					((MatrixDimensionsMetaData) _metaData).getMatrixCharacteristics().setNonZeros(newnnz);
+					dataset.setHDFSFile(true); //mark dataset as hdfs file (for restore)
+					writeStatus.setValue(true);         //mark for no cache-write on read
+				}
+				mb = readBlobFromHDFS(_hdfsFileName);
+			}
+			else if( ii == InputInfo.BinaryCellInputInfo ) {
 				//collect matrix block from binary block Dataset
-				mb = FlinkExecutionContext.toMatrixBlock(lds, rlen, clen, nnz);
+				mb = FlinkExecutionContext.toMatrixBlock(dataset, rlen, clen, nnz);
 			}
 			else {
 				//collect matrix block from binary cell Dataset
-				mb = FlinkExecutionContext.toMatrixBlock(lds, rlen, clen, brlen, bclen, nnz);
+				mb = FlinkExecutionContext.toMatrixBlock(dataset, rlen, clen, brlen, bclen, nnz);
 			}
 		}
 		catch(DMLRuntimeException ex) {
@@ -685,7 +696,7 @@ public class MatrixObject extends CacheableData<MatrixBlock>
 
 		//sanity check correct output
 		if( mb == null ) {
-			throw new IOException("Unable to load matrix from rdd: "+lds.getVarName());
+			throw new IOException("Unable to load matrix from dataset: "+dataset.getVarName());
 		}
 
 		return mb;

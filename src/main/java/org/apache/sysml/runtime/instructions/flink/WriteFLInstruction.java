@@ -223,8 +223,8 @@ public class WriteFLInstruction extends FLInstruction {
 			}
 
 			//save binary block dataset on hdfs
-			IOUtils.saveAsHadoopFile(in1, fname, MatrixIndexes.class, MatrixBlock.class,
-					SequenceFileOutputFormat.class);
+			IOUtils.saveAsHadoopFile(in1, fname, SequenceFileOutputFormat.class, MatrixIndexes.class, MatrixBlock.class
+			);
 
 			if (!mc.nnzKnown())
 				mc.setNonZeros(nnz);
