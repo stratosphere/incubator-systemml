@@ -27,6 +27,7 @@ import org.apache.sysml.runtime.instructions.flink.MapmmFLInstruction;
 import org.apache.sysml.runtime.instructions.flink.ReblockFLInstruction;
 import org.apache.sysml.runtime.instructions.flink.TsmmFLInstruction;
 import org.apache.sysml.runtime.instructions.flink.WriteFLInstruction;
+import org.apache.sysml.runtime.instructions.flink.MapmmChainFLInstruction;
 
 import java.util.HashMap;
 
@@ -39,7 +40,8 @@ public class FLInstructionParser extends InstructionParser {
 		//binary aggregate operators (matrix multiplication operators)
 		String2FLInstructionType.put("mapmm", FLINSTRUCTION_TYPE.MAPMM);
 		String2FLInstructionType.put("tsmm", FLINSTRUCTION_TYPE.TSMM);
-
+		String2FLInstructionType.put("mapmmchain", FLINSTRUCTION_TYPE.MAPMMCHAIN);		
+	
 		// REBLOCK Instruction Opcodes
 		String2FLInstructionType.put("rblk", FLINSTRUCTION_TYPE.Reblock);
 		String2FLInstructionType.put("csvrblk", FLINSTRUCTION_TYPE.CSVReblock);
@@ -73,7 +75,8 @@ public class FLInstructionParser extends InstructionParser {
 				return MapmmFLInstruction.parseInstruction(str);
 			case TSMM:
 				return TsmmFLInstruction.parseInstruction(str);
-
+			case MAPMMCHAIN:
+				return MapmmChainFLInstruction.parseInstruction(str);
 
 			case Reblock:
 				return ReblockFLInstruction.parseInstruction(str);

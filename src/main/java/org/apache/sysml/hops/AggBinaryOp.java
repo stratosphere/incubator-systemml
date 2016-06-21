@@ -249,6 +249,9 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 					case MAPMM_R:
 						constructFlinkLopsMapMM( _method );
 						break;
+					case MAPMM_CHAIN:
+						constructFlinkLopsMapMMChain( chain );
+						break;
 					default:
 						throw new HopsException(this.printErrorLocation() + "Invalid Matrix Mult Method (" + _method + ") while constructing SPARK lops.");
 				}
@@ -791,6 +794,36 @@ public class AggBinaryOp extends Hop implements MultiThreadedHop
 
 		return out;
 	}
+
+
+	/**
+	 * 
+	 * @param chain
+	 * @throws HopsException 
+	 * @throws LopsException 
+	 */
+	private void constructFlinkLopsMapMMChain(ChainType chain) 
+		throws LopsException, HopsException
+	{
+		MapMultChain mapmmchain = null;
+		if( chain == ChainType.XtXv ) {
+			Hop hX = getInput().get(0).getInput().get(0);
+			Hop hv = getInput().get(1).getInput().get(1);
+			mapmmchain = new MapMultChain( hX.constructLops(), hv.constructLops(), getDataType(), getValueType(), ExecType.FLINK);
+		}
+		else { //ChainType.XtwXv / ChainType.XtXvy
+			int wix = (chain == ChainType.XtwXv) ? 0 : 1;
+			int vix = (chain == ChainType.XtwXv) ? 1 : 0;
+			Hop hX = getInput().get(0).getInput().get(0);
+			Hop hw = getInput().get(1).getInput().get(wix);
+			Hop hv = getInput().get(1).getInput().get(vix).getInput().get(1);
+			mapmmchain = new MapMultChain( hX.constructLops(), hv.constructLops(), hw.constructLops(), chain, getDataType(), getValueType(), ExecType.FLINK);
+		}
+		setOutputDimensions(mapmmchain);
+		setLineNumbers(mapmmchain);
+		setLops(mapmmchain);
+	}
+
 
 	//////////////////////////
 	// Spark Lops generation

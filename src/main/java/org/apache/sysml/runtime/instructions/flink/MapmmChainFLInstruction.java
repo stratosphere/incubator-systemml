@@ -86,7 +86,7 @@ public class MapmmChainFLInstruction extends FLInstruction {
         chainType = type;
     }
 
-    public MapmmChainFLInstruction parseInstruction(String istr) throws DMLRuntimeException {
+    public static MapmmChainFLInstruction parseInstruction(String istr) throws DMLRuntimeException {
         String[] parts = InstructionUtils.getInstructionPartsWithValueType(istr);
         InstructionUtils.checkNumFields(parts, 4, 5);
         String opcode = parts[0];
